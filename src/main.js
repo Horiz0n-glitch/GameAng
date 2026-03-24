@@ -462,57 +462,90 @@ function renderPlay() {
     `;
   }
 
-  // Student view OR Preview view
-  if (state.role === 'alumno' || state.isPreview) {
-    const total = state.activeQuiz.questions.length;
-    const qIndex = state.localQIndex;
-    
-    // Header for Preview
-    const previewHeader = state.isPreview ? `
-      <div style="background:var(--accent1); color:white; padding:8px; border-radius:10px; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center; font-size:0.9rem">
-        <span>👀 MODO PREVISUALIZACIÓN</span>
-        <button class="btn" style="background:rgba(255,255,255,0.2); color:white; padding:4px 10px; font-size:0.75rem" onclick="window.actions.backToMonitor()">Volver al Monitoreo</button>
-      </div>
-    ` : '';
-
-    if (qIndex >= total) {
-    const sorted = [...state.players].sort((a,b) => b.score - a.score);
+  // Preview view for Teacher
+  if (state.isPreview) {
     return `
-      <div class="page active">
-        <div class="results-card">
-          <div style="font-size:3.5rem; margin-bottom:15px">🏁</div>
-          <h2>¡Quiz Completado!</h2>
-          <p style="color:var(--muted); margin-bottom:24px">Mirá cómo va el tablero en tiempo real:</p>
-          
-          <div class="leaderboard">
-            ${sorted.map((p, i) => `
-              <div class="lb-row ${p.name === state.playerName ? 'highlight' : ''}">
-                <div class="lb-rank ${i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : ''}">${i < 3 ? ['🥇','🥈','🥉'][i] : i+1}</div>
-                <div class="lb-name">
-                  ${p.name} ${p.name === state.playerName ? '<span class="badge badge-purple">Tú</span>' : ''}
-                  ${p.finished ? ' ✅' : ' ⏳'}
-                </div>
-                <div class="lb-bar"><div class="lb-bar-fill" style="width:${total > 0 ? Math.round(((p.score||0)/total)*100) : 0}%"></div></div>
-                <div class="lb-score">${p.score || 0}/${total}</div>
+      <div class="page active" style="padding:15px">
+        <div style="background:var(--accent1); color:white; padding:15px 20px; border-radius:12px; margin-bottom:24px; display:flex; justify-content:space-between; align-items:center; box-shadow:var(--shadow)">
+          <div style="display:flex; align-items:center; justify-content:start; gap:10px">
+            <span style="font-size:1.5rem">👀</span>
+            <div>
+              <h2 style="margin:0; font-size:1.1rem; font-weight:800; font-family:'Plus Jakarta Sans', sans-serif">MODO PREVISUALIZACIÓN</h2>
+              <p style="margin:0; font-size:0.8rem; opacity:0.9">Vista estática con las respuestas correctas resaltadas.</p>
+            </div>
+          </div>
+          <button class="btn" style="background:rgba(255,255,255,0.2); color:white; padding:8px 16px; font-size:0.85rem; border:none; cursor:pointer;" onclick="window.actions.backToMonitor()">Volver al Monitoreo</button>
+        </div>
+        
+        <div class="play-screen" style="max-width:800px; margin:0 auto; padding-bottom:40px;">
+          ${state.activeQuiz.questions.map((q, qIndex) => `
+            <div style="background:var(--white); border-radius:var(--radius); padding:25px; margin-bottom:20px; box-shadow:var(--shadow); border:1px solid var(--border);">
+              <div class="q-header" style="margin-bottom:15px">
+                <span class="q-counter" style="font-weight:700; color:var(--muted)">Pregunta ${qIndex + 1} / ${state.activeQuiz.questions.length}</span>
               </div>
-            `).join('')}
-          </div>
-
-          <div style="margin-top:30px">
-            <button class="btn btn-secondary" onclick="window.router.go('landing')">🏠 Salir al inicio</button>
-          </div>
+              <div class="q-text" style="font-size:1.2rem; font-weight:700; margin-bottom:20px">${q.text}</div>
+              <div class="answers-grid">
+                ${q.options.map((opt, i) => {
+                  const isCorrect = Array.isArray(q.correct) ? q.correct.includes(i) : q.correct === i;
+                  const btnStyle = isCorrect ? 'background:#e0fff5; border-color:var(--accent4); color:#1a9e75;' : 'background:var(--white); border-color:var(--border); color:var(--text); opacity:0.6;';
+                  return `
+                    <div style="padding:15px 20px; border-radius:var(--radius-sm); border:2px solid ${isCorrect ? 'var(--accent4)' : 'var(--border)'}; ${btnStyle} display:flex; align-items:center; gap:12px; font-weight:500;">
+                      <div class="option-letter ${['opt-a','opt-b','opt-c','opt-d','opt-e','opt-f','opt-g','opt-h'][i]}">${String.fromCharCode(65+i)}</div>
+                      ${opt || `Opción ${i+1}`}
+                      ${isCorrect ? '<span style="margin-left:auto; font-size:1.1rem">✅</span>' : ''}
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          `).join('')}
         </div>
       </div>
     `;
   }
 
+  // Student view 
+  if (state.role === 'alumno') {
+    const total = state.activeQuiz.questions.length;
+    const qIndex = state.localQIndex;
+    
+    if (qIndex >= total) {
+      const sorted = [...state.players].sort((a,b) => b.score - a.score);
+      return `
+        <div class="page active">
+          <div class="results-card">
+            <div style="font-size:3.5rem; margin-bottom:15px">🏁</div>
+            <h2>¡Quiz Completado!</h2>
+            <p style="color:var(--muted); margin-bottom:24px">Mirá cómo va el tablero en tiempo real:</p>
+            
+            <div class="leaderboard">
+              ${sorted.map((p, i) => `
+                <div class="lb-row ${p.name === state.playerName ? 'highlight' : ''}">
+                  <div class="lb-rank ${i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : ''}">${i < 3 ? ['🥇','🥈','🥉'][i] : i+1}</div>
+                  <div class="lb-name">
+                    ${p.name} ${p.name === state.playerName ? '<span class="badge badge-purple">Tú</span>' : ''}
+                    ${p.finished ? ' ✅' : ' ⏳'}
+                  </div>
+                  <div class="lb-bar"><div class="lb-bar-fill" style="width:${total > 0 ? Math.round(((p.score||0)/total)*100) : 0}%"></div></div>
+                  <div class="lb-score">${p.score || 0}/${total}</div>
+                </div>
+              `).join('')}
+            </div>
+
+            <div style="margin-top:30px">
+              <button class="btn btn-secondary" onclick="window.router.go('landing')">🏠 Salir al inicio</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
   const q = state.activeQuiz.questions[qIndex];
-  const player = state.role === 'alumno' ? state.players.find(p => p.name === state.playerName) : null;
-  const currentAnswers = state.isPreview ? (state.previewAnswer || []) : (player?.currentAnswer || []);
+  const player = state.players.find(p => p.name === state.playerName);
+  const currentAnswers = player?.currentAnswer || [];
   
   return `
     <div class="page active">
-      ${previewHeader}
       <div class="play-screen">
         <div class="q-header">
           <span class="q-counter">Pregunta ${qIndex + 1} / ${total}</span>
@@ -758,7 +791,8 @@ window.actions = {
       await window.actions.loadQuizzes();
       const newIdx = state.quizzes.findIndex(q => q.id === quizId);
       if (newIdx > -1) {
-        window.actions.manageSession(newIdx);
+        await window.actions.manageSession(newIdx);
+        window.actions.startPreview();
       } else {
         window.actions.selectRole('profe');
       }
@@ -922,13 +956,6 @@ window.actions = {
   },
 
   selectStudentAnswer: async (idx) => {
-    if (state.isPreview) {
-      if (state.previewAnswer?.length > 0) return;
-      state.previewAnswer = [idx];
-      render();
-      return;
-    }
-    
     let player = state.players.find(p => p.name === state.playerName);
     if (!player.currentAnswer) player.currentAnswer = [];
     
@@ -938,8 +965,6 @@ window.actions = {
 
     player.currentAnswer = [idx];
     render();
-    
-    if (state.isPreview) return; // Don't sync to Firebase in preview mode
 
     // Sync immediately to Firebase so the choice is locked in the cloud too
     const playerRef = doc(db, 'sessions', state.session.id, 'players', state.playerName);
@@ -950,14 +975,6 @@ window.actions = {
     window.actions.stopTimer();
     const total = state.activeQuiz.questions.length;
     const q = state.activeQuiz.questions[state.localQIndex];
-
-    if (state.isPreview) {
-      state.localQIndex++;
-      state.previewAnswer = [];
-      if (state.localQIndex < total) window.actions.startTimer();
-      render();
-      return;
-    }
 
     const playerRef = doc(db, 'sessions', state.session.id, 'players', state.playerName);
     const player = state.players.find(p => p.name === state.playerName);
@@ -1015,15 +1032,11 @@ window.actions = {
 
   startPreview: () => {
     state.isPreview = true;
-    state.localQIndex = 0;
-    state.timeLeft = state.activeQuiz.timePerQ || 20;
     render();
-    window.actions.startTimer();
   },
 
   backToMonitor: () => {
     state.isPreview = false;
-    window.actions.stopTimer();
     render();
   },
 
