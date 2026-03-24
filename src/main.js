@@ -685,14 +685,25 @@ window.actions = {
     state.activeQuiz.userId = state.user.uid;
 
     try {
+      let quizId;
       if (state.editingQuizIdx !== null) {
-        const id = state.quizzes[state.editingQuizIdx].id;
-        await updateDoc(doc(db, 'quizzes', id), state.activeQuiz);
+        quizId = state.quizzes[state.editingQuizIdx].id;
+        await updateDoc(doc(db, 'quizzes', quizId), state.activeQuiz);
       } else {
-        await addDoc(collection(db, 'quizzes'), state.activeQuiz);
+        const docRef = await addDoc(collection(db, 'quizzes'), state.activeQuiz);
+        quizId = docRef.id;
+        state.activeQuiz.id = quizId; // Add ID to state before adding to list if needed
       }
       showToast('Quiz guardado en Firebase!', 'success', 3000);
-      window.actions.selectRole('profe');
+      
+      // Load all quizzes first to ensure the index is correct or just find the quiz index
+      await window.actions.loadQuizzes();
+      const newIdx = state.quizzes.findIndex(q => q.id === quizId);
+      if (newIdx > -1) {
+        window.actions.manageSession(newIdx);
+      } else {
+        window.actions.selectRole('profe');
+      }
     } catch (e) {
       console.error(e);
       await showAlert('Error al guardar el quiz en Firebase. Revisá tu conexión.', 'error');
