@@ -563,34 +563,6 @@
     nav { padding: 0 16px; }
     .page { padding: 20px 16px; }
   }
-
-  /* WORD CLOUD SPECIFIC */
-  .word-cloud {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    justify-content: center;
-    align-items: center;
-    padding: 32px;
-    background: #fbfbfd;
-    border-radius: var(--radius);
-    border: 1.5px dashed var(--border);
-    min-height: 260px;
-    margin-top: 10px;
-  }
-  .wc-word {
-    font-family: 'Syne', sans-serif;
-    font-weight: 700;
-    line-height: 1;
-    transition: all .3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    cursor: default;
-    padding: 4px 8px;
-    border-radius: 8px;
-  }
-  .wc-word:hover {
-    transform: scale(1.1);
-    background: rgba(108, 99, 255, 0.05);
-  }
 </style>
 </head>
 <body>
@@ -660,17 +632,6 @@
 
   <div class="creator-layout">
     <div class="creator-sidebar">
-      <div class="form-group">
-        <label class="form-label">Modo de juego</label>
-        <select class="form-select" id="quiz-mode" onchange="syncQuizField('mode', this.value)">
-          <option value="quiz" selected>Cuestionario (Trivia)</option>
-          <option value="word_cloud">Nube de Palabras</option>
-        </select>
-      </div>
-      <div class="form-group" id="word-count-group" style="display:none">
-        <label class="form-label">Palabras por alumno</label>
-        <input type="number" class="form-input" id="quiz-max-words" value="3" min="1" max="10" oninput="syncQuizField('maxWords', this.value)" />
-      </div>
       <div class="form-group">
         <label class="form-label">Nombre del Quiz *</label>
         <input class="form-input" id="quiz-name" placeholder="Ej: Historia Argentina" oninput="syncQuizField('name', this.value)" />
@@ -763,10 +724,6 @@
     </div>
     <div class="q-text" id="q-text">Cargando...</div>
     <div class="answers-grid" id="answers-grid"></div>
-    <div id="word-cloud-input-area" style="display:none">
-      <div id="word-inputs-container" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px"></div>
-      <button class="btn btn-primary" onclick="submitWords()" style="width:100%;justify-content:center;padding:14px">Enviar palabras</button>
-    </div>
     <div style="margin-top:20px;text-align:center" id="next-btn-wrap">
       <button class="btn btn-primary" onclick="nextQuestion()" id="next-btn" style="display:none;margin:0 auto">Siguiente →</button>
     </div>
@@ -785,9 +742,8 @@
       </div>
       <p style="color:var(--muted)" id="score-msg">—</p>
     </div>
-    <div class="section-title" id="results-title">Tabla de posiciones</div>
+    <div class="section-title">Tabla de posiciones</div>
     <div class="leaderboard" id="leaderboard"></div>
-    <div id="word-cloud-result" class="word-cloud" style="display:none"></div>
     <div style="display:flex;gap:10px;margin-top:24px;justify-content:center">
       <button class="btn btn-secondary" onclick="showPage('home')">🏠 Inicio</button>
       <button class="btn btn-primary" onclick="replayCurrentQuiz()">🔄 Jugar de nuevo</button>
@@ -819,14 +775,11 @@ let currentQuestions = [];
 let currentQuizName = '';
 let currentQuizDesc = '';
 let currentQuizTime = '20';
-let currentQuizMode = 'quiz';
-let currentMaxWords = '3';
 let deleteIdx = null;
 
 // GAME STATE
 let activeQuiz = null;
 let gamePlayers = [];
-let ALL_WORDS = []; // Store all words for word cloud
 let currentQ = 0;
 let playerScore = 0;
 let timerInterval = null;
@@ -834,7 +787,6 @@ let gameCode = null;
 let gameAnswers = [];
 let playerName = '';
 let fakeNames = ['Valentina','Lucas','Sofía','Mateo','Emma','Nicolás','Isabella','Tomás','Camila','Sebastián'];
-let fakeWordsDic = ['Innovación','Creatividad','Aprendizaje','Futuro','Colaboración','Tecnología','Educación','Descubrir','Pasión','Éxito','Meta','Sueño','Idea','Esfuerzo','Logro'];
 
 // ---- NAV ----
 function showPage(id) {
@@ -878,8 +830,8 @@ function renderHome() {
   container.innerHTML = quizzes.map((q, i) => `
     <div class="quiz-card">
       <div class="quiz-card-color" style="background:${q.color || colors[i%colors.length]}"></div>
-      <div class="quiz-card-title">${escHtml(q.name)} ${q.mode === 'word_cloud' ? '<span class="badge badge-yellow">Nube</span>' : ''}</div>
-      <div class="quiz-card-meta">${q.mode === 'word_cloud' ? '1 pregunta' : q.questions.length + ' pregunta' + (q.questions.length!==1?'s':'')} · ${q.timePerQ === '0' ? 'Sin límite' : q.timePerQ + 's/pregunta'}</div>
+      <div class="quiz-card-title">${escHtml(q.name)}</div>
+      <div class="quiz-card-meta">${q.questions.length} pregunta${q.questions.length!==1?'s':''} · ${q.timePerQ === '0' ? 'Sin límite' : q.timePerQ + 's/pregunta'}</div>
       ${q.desc ? `<div style="font-size:.82rem;color:var(--muted);margin-bottom:12px">${escHtml(q.desc)}</div>` : ''}
       <div class="quiz-card-actions">
         <button class="btn btn-primary" onclick="launchLobby(${i})">▶ Jugar</button>
@@ -898,14 +850,9 @@ function newQuiz() {
   currentQuizName = '';
   currentQuizDesc = '';
   currentQuizTime = '20';
-  currentQuizMode = 'quiz';
-  currentMaxWords = '3';
   document.getElementById('quiz-name').value = '';
   document.getElementById('quiz-desc').value = '';
   document.getElementById('quiz-time').value = '20';
-  document.getElementById('quiz-mode').value = 'quiz';
-  document.getElementById('quiz-max-words').value = '3';
-  document.getElementById('word-count-group').style.display = 'none';
   updateCreatorTitle();
   document.querySelectorAll('.color-dot').forEach(d => {
     d.classList.toggle('selected', d.dataset.color === currentColor);
@@ -921,15 +868,10 @@ function editQuiz(idx) {
   currentQuizName = q.name;
   currentQuizDesc = q.desc || '';
   currentQuizTime = q.timePerQ || '20';
-  currentQuizMode = q.mode || 'quiz';
-  currentMaxWords = q.maxWords || '3';
   
   document.getElementById('quiz-name').value = currentQuizName;
   document.getElementById('quiz-desc').value = currentQuizDesc;
   document.getElementById('quiz-time').value = currentQuizTime;
-  document.getElementById('quiz-mode').value = currentQuizMode;
-  document.getElementById('quiz-max-words').value = currentMaxWords;
-  document.getElementById('word-count-group').style.display = currentQuizMode === 'word_cloud' ? 'block' : 'none';
   updateCreatorTitle();
 
   document.querySelectorAll('.color-dot').forEach(d => {
@@ -983,22 +925,6 @@ function syncQuizField(field, val) {
   }
   if (field === 'desc') currentQuizDesc = val;
   if (field === 'time') currentQuizTime = val;
-  if (field === 'mode') {
-    currentQuizMode = val;
-    document.getElementById('word-count-group').style.display = val === 'word_cloud' ? 'block' : 'none';
-    if (val === 'word_cloud' && currentQuestions.length > 1) {
-      if (confirm('El modo Nube de Palabras solo permite una pregunta. ¿Eliminar las demás?')) {
-        currentQuestions = [currentQuestions[0]];
-        renderQuestions();
-      } else {
-        document.getElementById('quiz-mode').value = 'quiz';
-        currentQuizMode = 'quiz';
-        document.getElementById('word-count-group').style.display = 'none';
-      }
-    }
-    renderQuestions();
-  }
-  if (field === 'maxWords') currentMaxWords = val;
 }
 
 function syncQuestion(qIdx, field, val) {
@@ -1019,15 +945,7 @@ function updateCreatorTitle() {
 }
 
 function updateQCount() {
-  const count = currentQuestions.length;
-  document.getElementById('q-count-label').textContent = count + ' pregunta' + (count !== 1 ? 's' : '');
-  // Hide add question button if word cloud and already have 1
-  const addBtn = document.querySelector('.creator-sidebar .btn-secondary');
-  if (currentQuizMode === 'word_cloud' && count >= 1) {
-    if (addBtn && addBtn.textContent.includes('Agregar pregunta')) addBtn.style.display = 'none';
-  } else {
-    if (addBtn) addBtn.style.display = 'flex';
-  }
+  document.getElementById('q-count-label').textContent = currentQuestions.length + ' pregunta' + (currentQuestions.length !== 1 ? 's' : '');
 }
 
 function renderQuestions() {
@@ -1050,7 +968,6 @@ function renderQuestions() {
         <input class="form-input" placeholder="Escribí la pregunta..." value="${escHtml(q.text)}"
           oninput="syncQuestion(${qi},'text',this.value)" />
       </div>
-      ${currentQuizMode !== 'word_cloud' ? `
       <div style="font-size:.82rem;font-weight:600;color:var(--muted);margin-bottom:8px">Opciones de respuesta:</div>
       <div class="options-grid">
         ${q.options.map((opt, oi) => `
@@ -1067,7 +984,6 @@ function renderQuestions() {
         `).join('')}
       </div>
       ${q.options.length < 6 ? `<button class="add-option-btn" onclick="addOption(${qi})">＋ Agregar opción</button>` : ''}
-      ` : `<p style="font-size:.82rem;color:var(--muted)">En este modo, los alumnos enviarán palabras libres.</p>`}
     </div>
   `).join('');
 }
@@ -1089,8 +1005,6 @@ function saveQuiz() {
     desc: currentQuizDesc.trim(),
     timePerQ: currentQuizTime,
     color: currentColor,
-    mode: currentQuizMode,
-    maxWords: currentMaxWords,
     questions: JSON.parse(JSON.stringify(currentQuestions)),
     createdAt: editingQuizIdx !== null ? quizzes[editingQuizIdx].createdAt : Date.now()
   };
@@ -1198,7 +1112,6 @@ function joinGame() {
 function startActualGame() {
   currentQ = 0;
   playerScore = 0;
-  ALL_WORDS = [];
   gameAnswers = new Array(activeQuiz.questions.length).fill(null);
   showPage('play');
   renderQuestion();
@@ -1235,52 +1148,14 @@ function renderQuestion() {
     }, 1000);
   }
 
-  // Answers or Word Input
+  // Answers
   const grid = document.getElementById('answers-grid');
-  const wordArea = document.getElementById('word-cloud-input-area');
-  const wordContainer = document.getElementById('word-inputs-container');
-  
-  if (activeQuiz.mode === 'word_cloud') {
-    grid.style.display = 'none';
-    wordArea.style.display = 'block';
-    const numWords = parseInt(activeQuiz.maxWords) || 3;
-    wordContainer.innerHTML = Array.from({length: numWords}).map((_, i) => `
-      <input class="form-input word-input" placeholder="Palabra ${i+1}..." maxlength="20" />
-    `).join('');
-  } else {
-    grid.style.display = 'grid';
-    wordArea.style.display = 'none';
-    grid.innerHTML = q.options.map((opt, i) => `
-      <button class="answer-btn" onclick="selectAnswer(${i})">
-        <div class="option-letter ${optClasses[i]}">${optLetters[i]}</div>
-        ${opt}
-      </button>
-    `).join('');
-  }
-}
-
-function submitWords() {
-  const inputs = document.querySelectorAll('.word-input');
-  const words = Array.from(inputs).map(i => i.value.trim()).filter(w => w);
-  if (words.length === 0) { toast('⚠️ Escribí al menos una palabra'); return; }
-  
-  // Add player words
-  words.forEach(w => ALL_WORDS.push(w.toLowerCase()));
-  
-  // Simulate other players words
-  gamePlayers.forEach(p => {
-    if (p.name !== playerName) {
-      const numFake = Math.floor(Math.random() * (parseInt(activeQuiz.maxWords) || 3)) + 1;
-      for (let j = 0; j < numFake; j++) {
-        ALL_WORDS.push(fakeWordsDic[Math.floor(Math.random() * fakeWordsDic.length)].toLowerCase());
-      }
-    }
-  });
-
-  clearInterval(timerInterval);
-  toast('✅ ¡Palabras enviadas!');
-  document.getElementById('word-cloud-input-area').style.display = 'none';
-  document.getElementById('next-btn').style.display = 'inline-flex';
+  grid.innerHTML = q.options.map((opt, i) => `
+    <button class="answer-btn" onclick="selectAnswer(${i})">
+      <div class="option-letter ${optClasses[i]}">${optLetters[i]}</div>
+      ${opt}
+    </button>
+  `).join('');
 }
 
 function selectAnswer(idx) {
@@ -1329,10 +1204,8 @@ function showResults() {
 
   // Update stats
   stats.games++;
-  if (activeQuiz.mode !== 'word_cloud') {
-    stats.totalAcc += playerScore;
-    stats.totalQ += total;
-  }
+  stats.totalAcc += playerScore;
+  stats.totalQ += total;
   localStorage.setItem('qm_stats', JSON.stringify(stats));
 
   // Simulate scores for fake players
@@ -1350,51 +1223,18 @@ function showResults() {
     pct >= 60 ? '¡Muy bien! Seguí así 💪' :
     pct >= 40 ? 'Buen intento, podés mejorar 📚' : '¡A estudiar más! 📖';
 
-  // Leaderboard or Word Cloud
+  // Leaderboard
   const ranks = ['🥇','🥈','🥉'];
   const rankClass = ['gold','silver','bronze'];
-  const lb = document.getElementById('leaderboard');
-  const wc = document.getElementById('word-cloud-result');
-  const title = document.getElementById('results-title');
-
-  if (activeQuiz.mode === 'word_cloud') {
-    lb.style.display = 'none';
-    wc.style.display = 'flex';
-    title.textContent = 'Nube de Palabras';
-    
-    // Process words
-    const counts = {};
-    ALL_WORDS.forEach(w => counts[w] = (counts[w] || 0) + 1);
-    const sorted = Object.entries(counts).sort((a,b) => b[1] - a[1]);
-    const max = sorted[0] ? sorted[0][1] : 1;
-    
-    // Bug fix: Hide individual score circle if word cloud
-    document.getElementById('my-score-circle').style.display = 'none';
-    document.getElementById('score-msg').textContent = '¡Qué buena nube crearon entre todos! ✨';
-
-    const colors = ['#6c63ff', '#ff6b6b', '#43d9ad', '#ffc94a', '#ff8c42', '#8e44ad'];
-    wc.innerHTML = sorted.map(([word, freq]) => {
-      const size = 0.8 + (freq / max) * 1.5;
-      const color = colors[Math.floor(Math.random() * colors.length)];
-      return `<span class="wc-word" style="font-size:${size}rem; color:${color}; opacity:${0.6 + (freq/max)*0.4}">${escHtml(word)}</span>`;
-    }).join('');
-
-  } else {
-    lb.style.display = 'flex';
-    wc.style.display = 'none';
-    title.textContent = 'Tabla de posiciones';
-    document.getElementById('my-score-circle').style.display = 'flex';
-
-    // Bug #12 fix: guard against NaN when total is 0
-    lb.innerHTML = gamePlayers.map((p, i) => `
-      <div class="lb-row">
-        <div class="lb-rank ${rankClass[i] || ''}">${ranks[i] || (i+1)}</div>
-        <div class="lb-name">${escHtml(p.name)} ${p.name === playerName ? '<span class="badge badge-purple">Tú</span>':''}</div>
-        <div class="lb-bar"><div class="lb-bar-fill" style="width:${total > 0 ? Math.round((p.score/total)*100) : 0}%"></div></div>
-        <div class="lb-score">${p.score}/${total}</div>
-      </div>
-    `).join('');
-  }
+  // Bug #12 fix: guard against NaN when total is 0
+  document.getElementById('leaderboard').innerHTML = gamePlayers.map((p, i) => `
+    <div class="lb-row">
+      <div class="lb-rank ${rankClass[i] || ''}">${ranks[i] || (i+1)}</div>
+      <div class="lb-name">${escHtml(p.name)} ${p.name === playerName ? '<span class="badge badge-purple">Tú</span>':''}</div>
+      <div class="lb-bar"><div class="lb-bar-fill" style="width:${total > 0 ? Math.round((p.score/total)*100) : 0}%"></div></div>
+      <div class="lb-score">${p.score}/${total}</div>
+    </div>
+  `).join('');
 
   renderHome();
   showPage('results');
