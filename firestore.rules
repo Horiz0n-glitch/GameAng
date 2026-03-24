@@ -1,0 +1,18 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Quizzes: Owners can manage, anyone can read
+    match /quizzes/{quizId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && (resource.data.userId == request.auth.uid || request.resource.data.userId == request.auth.uid);
+    }
+    // Sessions and Players: Public read/write with the session code
+    match /sessions/{sessionId} {
+      allow read, write: if true;
+      match /players/{playerName} {
+        allow read, write: if true;
+      }
+    }
+  }
+}

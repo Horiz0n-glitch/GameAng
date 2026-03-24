@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QuizMaster Multiplayer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./src/style.css">
+</head>
+<body>
+  <div id="bg-overlay" class="bg-overlay"></div>
+  <div id="app">
+    <!-- UI will be rendered here dynamically -->
+    <nav>
+      <div class="logo">
+        <div class="logo-icon">⚡</div>
+        QuizMaster Online
+      </div>
+      <div id="nav-actions" class="nav-tabs">
+        <!-- Dynamic nav based on role -->
+      </div>
+      <div id="user-avatar" class="avatar" title="Cargando...">?</div>
+    </nav>
+
+    <main id="main-content">
+      <!-- Pages will be injected here -->
+      <div class="page active" id="page-loading">
+        <div style="text-align:center; padding: 100px 0;">
+          <div class="logo-icon" style="width:64px; height:64px; font-size:32px; margin: 0 auto 20px;">⚡</div>
+          <p style="color:var(--muted)">Preparando todo...</p>
+        </div>
+      </div>
+    </main>
+
+    <div class="toast" id="toast"></div>
+
+    <!-- Modals -->
+    <div class="modal-overlay" id="modal-container">
+      <!-- Modals will be injected here -->
+    </div>
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

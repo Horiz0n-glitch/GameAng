@@ -1,0 +1,11 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      // Allow read for everyone to show backgrounds
+      allow read: if true;
+      // Only authenticated teachers can upload/delete
+      allow write, delete: if request.auth != null;
+    }
+  }
+}

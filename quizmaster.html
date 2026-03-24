@@ -1,0 +1,1257 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QuizMaster — Crea y juega</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --white: #ffffff;
+    --bg: #f4f6fb;
+    --card: #ffffff;
+    --border: #e8ecf4;
+    --text: #0f1117;
+    --muted: #7a8299;
+    --accent1: #6c63ff;
+    --accent2: #ffc94a;
+    --accent3: #ff6b6b;
+    --accent4: #43d9ad;
+    --accent5: #ff8c42;
+    --shadow: 0 2px 16px rgba(15,17,23,0.08);
+    --shadow-lg: 0 8px 40px rgba(15,17,23,0.13);
+    --radius: 20px;
+    --radius-sm: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* NAV */
+  nav {
+    background: var(--white);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 1.3rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .logo-icon {
+    width: 32px; height: 32px;
+    background: var(--accent1);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 16px;
+  }
+  .nav-tabs {
+    display: flex; gap: 4px;
+  }
+  .nav-tab {
+    padding: 8px 18px;
+    border-radius: 10px;
+    border: none;
+    background: none;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    color: var(--muted);
+    transition: all .2s;
+  }
+  .nav-tab.active, .nav-tab:hover {
+    background: var(--bg);
+    color: var(--text);
+  }
+  .nav-tab.active { color: var(--accent1); font-weight: 600; }
+  .avatar {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--accent1), var(--accent4));
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-weight: 700; font-size: 0.85rem;
+    cursor: pointer;
+  }
+
+  /* PAGES */
+  .page { display: none; padding: 32px; max-width: 1100px; margin: 0 auto; }
+  .page.active { display: block; }
+
+  /* HOME */
+  .home-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 32px;
+  }
+  .home-greeting {
+    font-family: 'Syne', sans-serif;
+    font-size: 2rem; font-weight: 800;
+  }
+  .home-greeting span { color: var(--accent1); }
+  .btn {
+    padding: 12px 24px;
+    border-radius: var(--radius-sm);
+    border: none;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all .2s;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .btn-primary {
+    background: var(--accent1);
+    color: white;
+    box-shadow: 0 4px 16px rgba(108,99,255,0.35);
+  }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(108,99,255,0.45); }
+  .btn-secondary {
+    background: var(--white);
+    color: var(--text);
+    border: 1.5px solid var(--border);
+  }
+  .btn-secondary:hover { border-color: var(--accent1); color: var(--accent1); }
+  .btn-danger { background: #fff0f0; color: var(--accent3); border: 1.5px solid #ffd6d6; }
+  .btn-success { background: #f0fff9; color: var(--accent4); border: 1.5px solid #b6f5e0; }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+  .stat-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 24px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    position: relative;
+    overflow: hidden;
+  }
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 80px; height: 80px;
+    border-radius: 0 var(--radius) 0 80px;
+    opacity: .12;
+  }
+  .stat-card:nth-child(1)::before { background: var(--accent1); }
+  .stat-card:nth-child(2)::before { background: var(--accent2); }
+  .stat-card:nth-child(3)::before { background: var(--accent4); }
+  .stat-label { font-size: 0.8rem; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 8px; }
+  .stat-val {
+    font-family: 'Syne', sans-serif;
+    font-size: 2.2rem; font-weight: 800;
+  }
+  .stat-card:nth-child(1) .stat-val { color: var(--accent1); }
+  .stat-card:nth-child(2) .stat-val { color: var(--accent5); }
+  .stat-card:nth-child(3) .stat-val { color: var(--accent4); }
+
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700; font-size: 1.1rem;
+    margin-bottom: 16px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .badge {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.75rem; font-weight: 600;
+    padding: 2px 10px;
+    border-radius: 20px;
+  }
+  .badge-purple { background: #ece9ff; color: var(--accent1); }
+  .badge-yellow { background: #fff8e0; color: #c98a00; }
+  .badge-green { background: #e0fff5; color: #1a9e75; }
+  .badge-red { background: #fff0f0; color: var(--accent3); }
+
+  .quiz-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+  .quiz-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    padding: 24px;
+    cursor: pointer;
+    transition: all .22s;
+    position: relative;
+    overflow: hidden;
+  }
+  .quiz-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); border-color: var(--accent1); }
+  .quiz-card-color {
+    height: 6px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+  }
+  .quiz-card-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700; font-size: 1.05rem;
+    margin-bottom: 6px;
+  }
+  .quiz-card-meta {
+    font-size: 0.82rem; color: var(--muted);
+    margin-bottom: 14px;
+  }
+  .quiz-card-actions {
+    display: flex; gap: 8px; flex-wrap: wrap;
+  }
+  .quiz-card-actions .btn { padding: 7px 14px; font-size: 0.8rem; }
+
+  .empty-state {
+    text-align: center; padding: 60px 20px;
+    color: var(--muted);
+  }
+  .empty-state .emoji { font-size: 3rem; margin-bottom: 12px; }
+  .empty-state p { font-size: 1rem; margin-bottom: 16px; }
+
+  /* CREATOR */
+  .creator-header {
+    display: flex; align-items: center; gap: 16px;
+    margin-bottom: 28px;
+  }
+  .creator-header h2 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800; font-size: 1.5rem;
+  }
+
+  .form-group { margin-bottom: 20px; }
+  .form-label {
+    display: block;
+    font-weight: 600; font-size: 0.85rem;
+    margin-bottom: 8px;
+    color: var(--text);
+  }
+  .form-input, .form-select {
+    width: 100%; padding: 12px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    background: var(--white);
+    color: var(--text);
+    transition: border .2s;
+    outline: none;
+  }
+  .form-input:focus, .form-select:focus { border-color: var(--accent1); }
+
+  .creator-layout {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+  .creator-sidebar {
+    background: var(--card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    padding: 24px;
+    box-shadow: var(--shadow);
+    position: sticky; top: 80px;
+  }
+  .creator-main {
+    display: flex; flex-direction: column; gap: 16px;
+  }
+
+  .question-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    border: 1.5px solid var(--border);
+    padding: 24px;
+    box-shadow: var(--shadow);
+    transition: border .2s;
+  }
+  .question-card:hover { border-color: var(--accent1); }
+  .question-num {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.8rem; font-weight: 700;
+    color: var(--accent1);
+    text-transform: uppercase; letter-spacing: .08em;
+    margin-bottom: 12px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .options-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 10px; margin-top: 14px;
+  }
+  .option-row {
+    display: flex; align-items: center; gap: 8px;
+  }
+  .option-letter {
+    width: 30px; height: 30px; min-width: 30px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 0.85rem;
+    color: white;
+  }
+  .opt-a { background: var(--accent1); }
+  .opt-b { background: var(--accent5); }
+  .opt-c { background: var(--accent4); }
+  .opt-d { background: var(--accent2); color: var(--text); }
+  .opt-e { background: var(--accent3); }
+  .opt-f { background: #8e44ad; }
+
+  .correct-radio {
+    display: flex; align-items: center; gap: 6px;
+    margin-top: 6px;
+    font-size: 0.82rem; color: var(--muted); cursor: pointer;
+  }
+  .correct-radio input { accent-color: var(--accent4); width: 16px; height: 16px; }
+
+  .add-option-btn {
+    margin-top: 10px;
+    background: none; border: 1.5px dashed var(--border);
+    border-radius: var(--radius-sm);
+    padding: 8px 14px;
+    font-size: 0.82rem; color: var(--muted);
+    cursor: pointer; width: 100%;
+    transition: all .2s;
+  }
+  .add-option-btn:hover { border-color: var(--accent1); color: var(--accent1); }
+
+  .color-pick { display: flex; gap: 8px; margin-top: 6px; }
+  .color-dot {
+    width: 22px; height: 22px; border-radius: 50%;
+    cursor: pointer; border: 2px solid transparent;
+    transition: transform .15s;
+  }
+  .color-dot:hover, .color-dot.selected { transform: scale(1.25); border-color: var(--text); }
+
+  /* GAME LOBBY */
+  .lobby-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    padding: 32px;
+    box-shadow: var(--shadow);
+    max-width: 640px; margin: 0 auto;
+    text-align: center;
+  }
+  .game-code {
+    font-family: 'Syne', sans-serif;
+    font-size: 3.5rem; font-weight: 800;
+    letter-spacing: .18em;
+    color: var(--accent1);
+    background: #ece9ff;
+    border-radius: var(--radius);
+    padding: 20px 32px;
+    display: inline-block;
+    margin: 16px 0;
+  }
+  .players-list {
+    display: flex; flex-wrap: wrap; gap: 10px;
+    justify-content: center; margin: 20px 0;
+  }
+  .player-chip {
+    background: var(--bg);
+    border: 1.5px solid var(--border);
+    border-radius: 30px;
+    padding: 8px 16px;
+    font-size: 0.88rem; font-weight: 500;
+    display: flex; align-items: center; gap: 7px;
+    animation: popIn .3s ease;
+  }
+  @keyframes popIn {
+    from { transform: scale(.7); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  .player-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent4); }
+
+  /* PLAY */
+  .play-screen { max-width: 700px; margin: 0 auto; }
+  .progress-bar {
+    height: 8px;
+    background: var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 28px;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent1), var(--accent4));
+    border-radius: 8px;
+    transition: width .4s ease;
+  }
+  .q-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .q-counter {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.85rem; font-weight: 700;
+    color: var(--muted);
+  }
+  .timer-ring {
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    border: 3px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif;
+    font-weight: 800; font-size: 1rem;
+    color: var(--accent1);
+    position: relative;
+  }
+  .q-text {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.4rem; font-weight: 700;
+    margin-bottom: 28px;
+    line-height: 1.4;
+  }
+  .answers-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .answer-btn {
+    padding: 18px 20px;
+    border-radius: var(--radius);
+    border: 2px solid var(--border);
+    background: var(--white);
+    text-align: left;
+    cursor: pointer;
+    transition: all .2s;
+    display: flex; align-items: center; gap: 12px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem; font-weight: 500;
+    color: var(--text);
+  }
+  .answer-btn:hover:not(:disabled) { border-color: var(--accent1); background: #f4f0ff; transform: translateY(-2px); box-shadow: var(--shadow); }
+  .answer-btn.correct { background: #e0fff5; border-color: var(--accent4); color: #1a9e75; }
+  .answer-btn.wrong { background: #fff0f0; border-color: var(--accent3); color: var(--accent3); }
+  .answer-btn:disabled { cursor: default; pointer-events: none; opacity: 0.8; }
+
+  /* RESULTS */
+  .results-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    padding: 32px;
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+  }
+  .results-header { text-align: center; margin-bottom: 28px; }
+  .score-circle {
+    width: 120px; height: 120px;
+    border-radius: 50%;
+    border: 6px solid var(--accent1);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    margin: 0 auto 16px;
+    background: #f4f0ff;
+  }
+  .score-big {
+    font-family: 'Syne', sans-serif;
+    font-size: 2rem; font-weight: 800; color: var(--accent1);
+  }
+  .score-of { font-size: 0.78rem; color: var(--muted); }
+  .leaderboard { display: flex; flex-direction: column; gap: 10px; }
+  .lb-row {
+    display: flex; align-items: center; gap: 14px;
+    background: var(--bg);
+    border-radius: var(--radius-sm);
+    padding: 14px 18px;
+  }
+  .lb-rank {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800; font-size: 1.1rem;
+    width: 28px; text-align: center;
+    color: var(--muted);
+  }
+  .lb-rank.gold { color: #f5a623; }
+  .lb-rank.silver { color: #8a9bb5; }
+  .lb-rank.bronze { color: #c07e3f; }
+  .lb-name { flex: 1; font-weight: 600; }
+  .lb-score {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700; color: var(--accent1);
+  }
+  .lb-bar {
+    flex: 2;
+    height: 8px;
+    background: var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .lb-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent1), var(--accent4));
+    border-radius: 8px;
+  }
+
+  /* JOIN */
+  .join-wrap {
+    max-width: 480px; margin: 60px auto 0;
+    text-align: center;
+  }
+  .join-wrap h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 2rem; font-weight: 800;
+    margin-bottom: 8px;
+  }
+  .join-wrap p { color: var(--muted); margin-bottom: 28px; }
+  .code-input {
+    text-align: center;
+    font-family: 'Syne', sans-serif;
+    font-size: 2rem; font-weight: 800;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+  }
+
+  /* MODAL */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(15,17,23,0.35);
+    backdrop-filter: blur(4px);
+    z-index: 200;
+    align-items: center; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 32px;
+    width: 90%; max-width: 480px;
+    box-shadow: var(--shadow-lg);
+    animation: slideUp .3s ease;
+  }
+  @keyframes slideUp {
+    from { transform: translateY(30px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  .modal h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.3rem; font-weight: 800;
+    margin-bottom: 20px;
+  }
+  .modal-actions { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: var(--text); color: white;
+    padding: 12px 24px; border-radius: 30px;
+    font-size: 0.9rem; font-weight: 500;
+    z-index: 300;
+    transition: transform .3s ease;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  @media (max-width: 768px) {
+    .creator-layout { grid-template-columns: 1fr; }
+    .stats-grid { grid-template-columns: 1fr; }
+    .answers-grid { grid-template-columns: 1fr; }
+    .options-grid { grid-template-columns: 1fr; }
+    nav { padding: 0 16px; }
+    .page { padding: 20px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">
+    <div class="logo-icon">⚡</div>
+    QuizMaster
+  </div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('home')">Inicio</button>
+    <button class="nav-tab" onclick="showPage('creator')">Crear Quiz</button>
+    <button class="nav-tab" onclick="showPage('join')">Unirse</button>
+  </div>
+  <div class="avatar" title="Profe">P</div>
+</nav>
+
+<!-- HOME -->
+<div class="page active" id="page-home">
+  <div class="home-header">
+    <div>
+      <p style="color:var(--muted);font-size:.9rem;margin-bottom:4px">¡Bienvenido de vuelta! 👋</p>
+      <div class="home-greeting">Mis <span>Quizzes</span></div>
+    </div>
+    <button class="btn btn-primary" onclick="showPage('creator'); newQuiz()">
+      ＋ Nuevo Quiz
+    </button>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Quizzes creados</div>
+      <div class="stat-val" id="stat-quizzes">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Partidas jugadas</div>
+      <div class="stat-val" id="stat-games">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Promedio de aciertos</div>
+      <div class="stat-val" id="stat-avg">—</div>
+    </div>
+  </div>
+
+  <div class="section-title">
+    Quizzes disponibles <span class="badge badge-purple" id="quiz-count-badge">0</span>
+  </div>
+  <div class="quiz-grid" id="quiz-list">
+    <div class="empty-state" id="empty-state">
+      <div class="emoji">🎯</div>
+      <p>Todavía no creaste ningún quiz.</p>
+      <button class="btn btn-primary" onclick="showPage('creator'); newQuiz()">Crear mi primer quiz</button>
+    </div>
+  </div>
+</div>
+
+<!-- CREATOR -->
+<div class="page" id="page-creator">
+  <div class="creator-header">
+    <button class="btn btn-secondary" onclick="showPage('home')" style="padding:8px 14px">← Volver</button>
+    <h2 id="creator-title">Nuevo Quiz</h2>
+    <div style="margin-left:auto;display:flex;gap:10px">
+      <button class="btn btn-secondary" onclick="previewQuiz()">Vista previa</button>
+      <button class="btn btn-primary" onclick="saveQuiz()">Guardar Quiz</button>
+    </div>
+  </div>
+
+  <div class="creator-layout">
+    <div class="creator-sidebar">
+      <div class="form-group">
+        <label class="form-label">Nombre del Quiz *</label>
+        <input class="form-input" id="quiz-name" placeholder="Ej: Historia Argentina" oninput="syncQuizField('name', this.value)" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Descripción</label>
+        <input class="form-input" id="quiz-desc" placeholder="Breve descripción..." oninput="syncQuizField('desc', this.value)" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tiempo por pregunta (seg)</label>
+        <select class="form-select" id="quiz-time" onchange="syncQuizField('time', this.value)">
+          <option value="10">10 segundos</option>
+          <option value="20" selected>20 segundos</option>
+          <option value="30">30 segundos</option>
+          <option value="60">60 segundos</option>
+          <option value="0">Sin límite</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Color del quiz</label>
+        <div class="color-pick" id="color-pick">
+          <div class="color-dot selected" style="background:#6c63ff" data-color="#6c63ff" onclick="selectColor(this)"></div>
+          <div class="color-dot" style="background:#ff6b6b" data-color="#ff6b6b" onclick="selectColor(this)"></div>
+          <div class="color-dot" style="background:#ffc94a" data-color="#ffc94a" onclick="selectColor(this)"></div>
+          <div class="color-dot" style="background:#43d9ad" data-color="#43d9ad" onclick="selectColor(this)"></div>
+          <div class="color-dot" style="background:#ff8c42" data-color="#ff8c42" onclick="selectColor(this)"></div>
+        </div>
+      </div>
+      <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
+      <p style="font-size:.82rem;color:var(--muted);text-align:center"><strong id="q-count-label">0 preguntas</strong> en este quiz</p>
+      <button class="btn btn-secondary" onclick="addQuestion()" style="width:100%;margin-top:10px;justify-content:center">＋ Agregar pregunta</button>
+    </div>
+
+    <div class="creator-main" id="questions-container">
+      <div class="empty-state" id="no-questions">
+        <div class="emoji">❓</div>
+        <p>Agregá tu primera pregunta</p>
+        <button class="btn btn-primary" onclick="addQuestion()">＋ Agregar pregunta</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- JOIN -->
+<div class="page" id="page-join">
+  <div class="join-wrap">
+    <div style="font-size:3rem;margin-bottom:12px">🎮</div>
+    <h2>Unirse a un juego</h2>
+    <p>Ingresá el código que te dio tu profe</p>
+    <div class="form-group">
+      <input class="form-input code-input" id="join-code" placeholder="ABC123" maxlength="6" oninput="this.value=this.value.toUpperCase()" />
+    </div>
+    <div class="form-group">
+      <input class="form-input" id="join-name" placeholder="Tu nombre" style="text-align:center" />
+    </div>
+    <button class="btn btn-primary" onclick="joinGame()" style="width:100%;justify-content:center;padding:14px">Entrar al juego →</button>
+  </div>
+</div>
+
+<!-- LOBBY -->
+<div class="page" id="page-lobby">
+  <div class="lobby-card">
+    <p style="color:var(--muted);font-size:.88rem;margin-bottom:4px">Código de partida</p>
+    <div class="game-code" id="lobby-code">—</div>
+    <p style="color:var(--muted);font-size:.9rem">Compartí este código con tus alumnos para que se unan</p>
+    <div style="margin:20px 0;display:flex;gap:10px;justify-content:center">
+      <button class="btn btn-secondary" onclick="copyCode()">📋 Copiar código</button>
+      <button class="btn btn-secondary" onclick="addFakePlayer()">👤 Simular jugador</button>
+    </div>
+    <div class="section-title" style="justify-content:center">
+      Jugadores conectados <span class="badge badge-green" id="player-count-badge">0</span>
+    </div>
+    <div class="players-list" id="players-list"></div>
+    <button class="btn btn-primary" onclick="startGame()" style="margin-top:20px;width:100%;justify-content:center;padding:14px" id="start-btn" disabled>
+      Iniciar juego →
+    </button>
+    <p style="font-size:.78rem;color:var(--muted);margin-top:10px">Se necesita al menos 1 jugador</p>
+  </div>
+</div>
+
+<!-- PLAY -->
+<div class="page" id="page-play">
+  <div class="play-screen">
+    <div class="q-header">
+      <span class="q-counter" id="q-counter">Pregunta 1 / 5</span>
+      <div class="timer-ring" id="timer-display">20</div>
+    </div>
+    <div class="progress-bar">
+      <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+    </div>
+    <div class="q-text" id="q-text">Cargando...</div>
+    <div class="answers-grid" id="answers-grid"></div>
+    <div style="margin-top:20px;text-align:center" id="next-btn-wrap">
+      <button class="btn btn-primary" onclick="nextQuestion()" id="next-btn" style="display:none;margin:0 auto">Siguiente →</button>
+    </div>
+  </div>
+</div>
+
+<!-- RESULTS -->
+<div class="page" id="page-results">
+  <div class="results-card">
+    <div class="results-header">
+      <div style="font-size:2.5rem">🏆</div>
+      <h2 style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.6rem;margin:8px 0">¡Resultados finales!</h2>
+      <div class="score-circle" id="my-score-circle">
+        <div class="score-big" id="my-score">0</div>
+        <div class="score-of" id="my-score-of">de 0</div>
+      </div>
+      <p style="color:var(--muted)" id="score-msg">—</p>
+    </div>
+    <div class="section-title">Tabla de posiciones</div>
+    <div class="leaderboard" id="leaderboard"></div>
+    <div style="display:flex;gap:10px;margin-top:24px;justify-content:center">
+      <button class="btn btn-secondary" onclick="showPage('home')">🏠 Inicio</button>
+      <button class="btn btn-primary" onclick="replayCurrentQuiz()">🔄 Jugar de nuevo</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DELETE -->
+<div class="modal-overlay" id="modal-delete">
+  <div class="modal">
+    <h3>¿Eliminar quiz?</h3>
+    <p style="color:var(--muted)">Esta acción no se puede deshacer.</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-delete')">Cancelar</button>
+      <button class="btn btn-danger" onclick="confirmDelete()">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ---- STATE ----
+let quizzes = JSON.parse(localStorage.getItem('qm_quizzes') || '[]');
+let stats = JSON.parse(localStorage.getItem('qm_stats') || '{"games":0,"totalAcc":0,"totalQ":0}');
+let editingQuizIdx = null;
+let currentColor = '#6c63ff';
+let currentQuestions = [];
+let currentQuizName = '';
+let currentQuizDesc = '';
+let currentQuizTime = '20';
+let deleteIdx = null;
+
+// GAME STATE
+let activeQuiz = null;
+let gamePlayers = [];
+let currentQ = 0;
+let playerScore = 0;
+let timerInterval = null;
+let gameCode = null;
+let gameAnswers = [];
+let playerName = '';
+let fakeNames = ['Valentina','Lucas','Sofía','Mateo','Emma','Nicolás','Isabella','Tomás','Camila','Sebastián'];
+
+// ---- NAV ----
+function showPage(id) {
+  // Bug #4 fix: stop timer when leaving play page
+  if (id !== 'play') clearInterval(timerInterval);
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  document.querySelectorAll('.nav-tab').forEach((t,i) => t.classList.remove('active'));
+  const map = {home:0,creator:1,join:2};
+  if (map[id] !== undefined) document.querySelectorAll('.nav-tab')[map[id]].classList.add('active');
+}
+
+// ---- TOAST ----
+function toast(msg, duration=2500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), duration);
+}
+
+// ---- HOME ----
+function renderHome() {
+  document.getElementById('stat-quizzes').textContent = quizzes.length;
+  document.getElementById('stat-games').textContent = stats.games;
+  document.getElementById('stat-avg').textContent = stats.totalQ > 0
+    ? Math.round((stats.totalAcc / stats.totalQ) * 100) + '%' : '—';
+  document.getElementById('quiz-count-badge').textContent = quizzes.length;
+
+  const container = document.getElementById('quiz-list');
+  const empty = document.getElementById('empty-state');
+
+  if (quizzes.length === 0) {
+    container.innerHTML = '';
+    container.appendChild(empty);
+    empty.style.display = 'block';
+    return;
+  }
+
+  // Bug #9 fix: use escHtml to prevent XSS
+  const colors = ['#6c63ff','#ff6b6b','#ffc94a','#43d9ad','#ff8c42','#8e44ad'];
+  container.innerHTML = quizzes.map((q, i) => `
+    <div class="quiz-card">
+      <div class="quiz-card-color" style="background:${q.color || colors[i%colors.length]}"></div>
+      <div class="quiz-card-title">${escHtml(q.name)}</div>
+      <div class="quiz-card-meta">${q.questions.length} pregunta${q.questions.length!==1?'s':''} · ${q.timePerQ === '0' ? 'Sin límite' : q.timePerQ + 's/pregunta'}</div>
+      ${q.desc ? `<div style="font-size:.82rem;color:var(--muted);margin-bottom:12px">${escHtml(q.desc)}</div>` : ''}
+      <div class="quiz-card-actions">
+        <button class="btn btn-primary" onclick="launchLobby(${i})">▶ Jugar</button>
+        <button class="btn btn-secondary" onclick="editQuiz(${i})">✏ Editar</button>
+        <button class="btn btn-danger" onclick="promptDelete(${i})">🗑</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ---- CREATOR ----
+function newQuiz() {
+  editingQuizIdx = null;
+  currentQuestions = [];
+  currentColor = '#6c63ff';
+  currentQuizName = '';
+  currentQuizDesc = '';
+  currentQuizTime = '20';
+  document.getElementById('quiz-name').value = '';
+  document.getElementById('quiz-desc').value = '';
+  document.getElementById('quiz-time').value = '20';
+  updateCreatorTitle();
+  document.querySelectorAll('.color-dot').forEach(d => {
+    d.classList.toggle('selected', d.dataset.color === currentColor);
+  });
+  renderQuestions();
+}
+
+function editQuiz(idx) {
+  editingQuizIdx = idx;
+  const q = quizzes[idx];
+  currentColor = q.color || '#6c63ff';
+  currentQuestions = JSON.parse(JSON.stringify(q.questions));
+  currentQuizName = q.name;
+  currentQuizDesc = q.desc || '';
+  currentQuizTime = q.timePerQ || '20';
+  
+  document.getElementById('quiz-name').value = currentQuizName;
+  document.getElementById('quiz-desc').value = currentQuizDesc;
+  document.getElementById('quiz-time').value = currentQuizTime;
+  updateCreatorTitle();
+
+  document.querySelectorAll('.color-dot').forEach(d => {
+    d.classList.toggle('selected', d.dataset.color === currentColor);
+  });
+  renderQuestions();
+  showPage('creator');
+}
+
+function selectColor(el) {
+  document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('selected'));
+  el.classList.add('selected');
+  currentColor = el.dataset.color;
+}
+
+const optLetters = ['A','B','C','D','E','F'];
+const optClasses = ['opt-a','opt-b','opt-c','opt-d','opt-e','opt-f'];
+
+function addQuestion() {
+  currentQuestions.push({ text: '', options: ['',''], correct: 0 });
+  renderQuestions();
+  setTimeout(() => {
+    const cards = document.querySelectorAll('.question-card');
+    cards[cards.length-1]?.scrollIntoView({behavior:'smooth',block:'center'});
+  }, 100);
+}
+
+function removeQuestion(idx) {
+  currentQuestions.splice(idx, 1);
+  renderQuestions();
+}
+
+function addOption(qIdx) {
+  if (currentQuestions[qIdx].options.length >= 6) { toast('Máximo 6 opciones'); return; }
+  currentQuestions[qIdx].options.push('');
+  renderQuestions();
+}
+
+function removeOption(qIdx, oIdx) {
+  if (currentQuestions[qIdx].options.length <= 2) { toast('Mínimo 2 opciones'); return; }
+  if (currentQuestions[qIdx].correct === oIdx) currentQuestions[qIdx].correct = 0;
+  if (currentQuestions[qIdx].correct > oIdx) currentQuestions[qIdx].correct--;
+  currentQuestions[qIdx].options.splice(oIdx, 1);
+  renderQuestions();
+}
+
+function syncQuizField(field, val) {
+  if (field === 'name') {
+    currentQuizName = val;
+    updateCreatorTitle();
+  }
+  if (field === 'desc') currentQuizDesc = val;
+  if (field === 'time') currentQuizTime = val;
+}
+
+function syncQuestion(qIdx, field, val) {
+  currentQuestions[qIdx][field] = val;
+}
+
+function syncOption(qIdx, oIdx, val) {
+  currentQuestions[qIdx].options[oIdx] = val;
+}
+
+function setCorrect(qIdx, oIdx) {
+  currentQuestions[qIdx].correct = oIdx;
+}
+
+function updateCreatorTitle() {
+  const title = editingQuizIdx !== null ? 'Editar: ' : 'Nuevo Quiz: ';
+  document.getElementById('creator-title').textContent = title + (currentQuizName || (editingQuizIdx !== null ? '' : 'Nuevo Quiz'));
+}
+
+function updateQCount() {
+  document.getElementById('q-count-label').textContent = currentQuestions.length + ' pregunta' + (currentQuestions.length !== 1 ? 's' : '');
+}
+
+function renderQuestions() {
+  const c = document.getElementById('questions-container');
+  const nq = document.getElementById('no-questions');
+  updateQCount();
+  if (currentQuestions.length === 0) {
+    c.innerHTML = '';
+    c.appendChild(nq);
+    nq.style.display = 'block';
+    return;
+  }
+  c.innerHTML = currentQuestions.map((q, qi) => `
+    <div class="question-card">
+      <div class="question-num">
+        Pregunta ${qi + 1}
+        <button class="btn btn-danger" onclick="removeQuestion(${qi})" style="padding:4px 10px;font-size:.75rem">✕ Eliminar</button>
+      </div>
+      <div class="form-group" style="margin-bottom:14px">
+        <input class="form-input" placeholder="Escribí la pregunta..." value="${escHtml(q.text)}"
+          oninput="syncQuestion(${qi},'text',this.value)" />
+      </div>
+      <div style="font-size:.82rem;font-weight:600;color:var(--muted);margin-bottom:8px">Opciones de respuesta:</div>
+      <div class="options-grid">
+        ${q.options.map((opt, oi) => `
+          <div class="option-row">
+            <div class="option-letter ${optClasses[oi]}">${optLetters[oi]}</div>
+            <input class="form-input" style="flex:1;padding:9px 12px" placeholder="Opción ${optLetters[oi]}..."
+              value="${escHtml(opt)}" oninput="syncOption(${qi},${oi},this.value)" />
+            ${q.options.length > 2 ? `<button onclick="removeOption(${qi},${oi})" style="background:none;border:none;cursor:pointer;color:var(--muted);padding:4px;font-size:1rem">✕</button>` : ''}
+          </div>
+          <label class="correct-radio" style="margin-left:38px">
+            <input type="radio" name="correct-${qi}" ${q.correct===oi?'checked':''} onchange="setCorrect(${qi},${oi})">
+            Correcta
+          </label>
+        `).join('')}
+      </div>
+      ${q.options.length < 6 ? `<button class="add-option-btn" onclick="addOption(${qi})">＋ Agregar opción</button>` : ''}
+    </div>
+  `).join('');
+}
+
+function escHtml(str) {
+  return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function saveQuiz() {
+  const name = currentQuizName.trim();
+  if (!name) { toast('⚠️ Ponele un nombre al quiz'); return; }
+  if (currentQuestions.length === 0) { toast('⚠️ Agregá al menos una pregunta'); return; }
+  for (let i = 0; i < currentQuestions.length; i++) {
+    if (!currentQuestions[i].text.trim()) { toast(`⚠️ La pregunta ${i+1} está vacía`); return; }
+    if (currentQuestions[i].options.some(o => !o.trim())) { toast(`⚠️ La pregunta ${i+1} tiene opciones vacías`); return; }
+  }
+  const quiz = {
+    name,
+    desc: currentQuizDesc.trim(),
+    timePerQ: currentQuizTime,
+    color: currentColor,
+    questions: JSON.parse(JSON.stringify(currentQuestions)),
+    createdAt: editingQuizIdx !== null ? quizzes[editingQuizIdx].createdAt : Date.now()
+  };
+  if (editingQuizIdx !== null) quizzes[editingQuizIdx] = quiz;
+  else quizzes.unshift(quiz);
+  localStorage.setItem('qm_quizzes', JSON.stringify(quizzes));
+  toast('✅ Quiz guardado exitosamente');
+  renderHome();
+  showPage('home');
+}
+
+function previewQuiz() {
+  if (currentQuestions.length === 0) { toast('Agregá preguntas primero'); return; }
+  const name = currentQuizName || 'Vista previa';
+  const temp = {
+    name, questions: JSON.parse(JSON.stringify(currentQuestions)),
+    timePerQ: currentQuizTime
+  };
+  activeQuiz = temp;
+  gamePlayers = [{ name: 'Profe (tú)', score: 0 }];
+  playerName = 'Profe (tú)';
+  startActualGame();
+}
+
+// ---- DELETE ----
+function promptDelete(idx) {
+  deleteIdx = idx;
+  document.getElementById('modal-delete').classList.add('open');
+}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function confirmDelete() {
+  quizzes.splice(deleteIdx, 1);
+  localStorage.setItem('qm_quizzes', JSON.stringify(quizzes));
+  closeModal('modal-delete');
+  renderHome();
+  toast('🗑 Quiz eliminado');
+}
+
+// ---- LOBBY ----
+function launchLobby(idx) {
+  activeQuiz = quizzes[idx];
+  gamePlayers = [];
+  gameCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+  document.getElementById('lobby-code').textContent = gameCode;
+  document.getElementById('players-list').innerHTML = '';
+  document.getElementById('player-count-badge').textContent = '0';
+  document.getElementById('start-btn').disabled = true;
+  showPage('lobby');
+}
+
+function copyCode() {
+  navigator.clipboard.writeText(gameCode).then(() => toast('📋 Código copiado!'));
+}
+
+function addFakePlayer() {
+  const name = fakeNames[Math.floor(Math.random() * fakeNames.length)] + ' ' + Math.floor(Math.random()*30+10);
+  gamePlayers.push({ name, score: 0 });
+  renderPlayers();
+}
+
+function renderPlayers() {
+  const list = document.getElementById('players-list');
+  list.innerHTML = gamePlayers.map(p => `
+    <div class="player-chip">
+      <div class="player-dot"></div>
+      ${p.name}
+    </div>
+  `).join('');
+  document.getElementById('player-count-badge').textContent = gamePlayers.length;
+  document.getElementById('start-btn').disabled = gamePlayers.length === 0;
+}
+
+function startGame() {
+  playerName = 'Profe (tú)';
+  gamePlayers.unshift({ name: playerName, score: 0 });
+  startActualGame();
+}
+
+// ---- JOIN ----
+// Bug #3 fix: validate code length and show a clear message for offline mode
+function joinGame() {
+  const code = document.getElementById('join-code').value.trim().toUpperCase();
+  const name = document.getElementById('join-name').value.trim();
+  if (!code || code.length < 3) { toast('Ingresá un código válido'); return; }
+  if (!name) { toast('Ingresá tu nombre'); return; }
+  // Try to match with active lobby code
+  if (gameCode && code !== gameCode) { toast('Código incorrecto. Pedile el código al profe.'); return; }
+  // Simulated join (modo local sin servidor)
+  if (!activeQuiz && quizzes.length > 0) {
+    toast('⚠️ Modo local: cargando el último quiz activo');
+    activeQuiz = quizzes[0];
+  }
+  if (!activeQuiz) { toast('No hay juegos activos. El profe debe iniciar uno primero.'); return; }
+  // Prevent duplicate names in local mode
+  if (gamePlayers.some(p => p.name.toLowerCase() === name.toLowerCase())) {
+    toast(`⚠️ Ya hay un jugador con ese nombre. Elegí otro.`); return;
+  }
+  playerName = name;
+  gamePlayers = [{ name, score: 0 }];
+  toast(`¡Bienvenido ${escHtml(name)}! 🎉`);
+  startActualGame();
+}
+
+// ---- ACTUAL GAME ----
+function startActualGame() {
+  currentQ = 0;
+  playerScore = 0;
+  gameAnswers = new Array(activeQuiz.questions.length).fill(null);
+  showPage('play');
+  renderQuestion();
+}
+
+function renderQuestion() {
+  const q = activeQuiz.questions[currentQ];
+  const total = activeQuiz.questions.length;
+  document.getElementById('q-counter').textContent = `Pregunta ${currentQ+1} / ${total}`;
+  document.getElementById('progress-fill').style.width = ((currentQ / total) * 100) + '%';
+  document.getElementById('q-text').textContent = q.text;
+  document.getElementById('next-btn').style.display = 'none';
+
+  // Timer
+  clearInterval(timerInterval);
+  const timeLimit = parseInt(activeQuiz.timePerQ) || 0;
+  let timeLeft = timeLimit > 0 ? timeLimit : 999;
+  document.getElementById('timer-display').textContent = timeLimit > 0 ? timeLeft : '∞';
+  document.getElementById('timer-display').style.color = 'var(--accent1)';
+  document.getElementById('timer-display').style.borderColor = 'var(--accent1)';
+
+  if (timeLimit > 0) {
+    timerInterval = setInterval(() => {
+      timeLeft--;
+      document.getElementById('timer-display').textContent = timeLeft;
+      if (timeLeft <= 5) {
+        document.getElementById('timer-display').style.color = 'var(--accent3)';
+        document.getElementById('timer-display').style.borderColor = 'var(--accent3)';
+      }
+      if (timeLeft <= 0) {
+        clearInterval(timerInterval);
+        revealAnswer(-1);
+      }
+    }, 1000);
+  }
+
+  // Answers
+  const grid = document.getElementById('answers-grid');
+  grid.innerHTML = q.options.map((opt, i) => `
+    <button class="answer-btn" onclick="selectAnswer(${i})">
+      <div class="option-letter ${optClasses[i]}">${optLetters[i]}</div>
+      ${opt}
+    </button>
+  `).join('');
+}
+
+function selectAnswer(idx) {
+  if (gameAnswers[currentQ] !== null) return;
+  clearInterval(timerInterval);
+  revealAnswer(idx);
+}
+
+function revealAnswer(chosen) {
+  if (gameAnswers[currentQ] !== null) return;
+  gameAnswers[currentQ] = chosen;
+  
+  const q = activeQuiz.questions[currentQ];
+  // Bug #2 fix: support both number and array format for q.correct
+  const correctArr = Array.isArray(q.correct) ? q.correct : [q.correct];
+  const btns = document.querySelectorAll('.answer-btn');
+  btns.forEach((btn, i) => {
+    btn.disabled = true;
+    if (correctArr.includes(i)) btn.classList.add('correct');
+    else if (i === chosen && !correctArr.includes(chosen)) btn.classList.add('wrong');
+  });
+  if (correctArr.includes(chosen)) {
+    playerScore++;
+    toast('✅ ¡Correcto! +1 punto');
+  } else if (chosen === -1) {
+    toast('⏰ ¡Tiempo agotado!');
+  } else {
+    toast('❌ Incorrecto');
+  }
+  document.getElementById('next-btn').style.display = 'inline-flex';
+}
+
+function nextQuestion() {
+  currentQ++;
+  if (currentQ >= activeQuiz.questions.length) {
+    showResults();
+  } else {
+    renderQuestion();
+  }
+}
+
+// ---- RESULTS ----
+function showResults() {
+  clearInterval(timerInterval);
+  const total = activeQuiz.questions.length;
+
+  // Update stats
+  stats.games++;
+  stats.totalAcc += playerScore;
+  stats.totalQ += total;
+  localStorage.setItem('qm_stats', JSON.stringify(stats));
+
+  // Simulate scores for fake players
+  gamePlayers.forEach(p => {
+    if (p.name === playerName) p.score = playerScore;
+    else p.score = Math.floor(Math.random() * (total + 1));
+  });
+  gamePlayers.sort((a, b) => b.score - a.score);
+
+  document.getElementById('my-score').textContent = playerScore;
+  document.getElementById('my-score-of').textContent = `de ${total}`;
+  const pct = Math.round((playerScore/total)*100);
+  document.getElementById('score-msg').textContent =
+    pct >= 80 ? '¡Excelente resultado! 🎉' :
+    pct >= 60 ? '¡Muy bien! Seguí así 💪' :
+    pct >= 40 ? 'Buen intento, podés mejorar 📚' : '¡A estudiar más! 📖';
+
+  // Leaderboard
+  const ranks = ['🥇','🥈','🥉'];
+  const rankClass = ['gold','silver','bronze'];
+  // Bug #12 fix: guard against NaN when total is 0
+  document.getElementById('leaderboard').innerHTML = gamePlayers.map((p, i) => `
+    <div class="lb-row">
+      <div class="lb-rank ${rankClass[i] || ''}">${ranks[i] || (i+1)}</div>
+      <div class="lb-name">${escHtml(p.name)} ${p.name === playerName ? '<span class="badge badge-purple">Tú</span>':''}</div>
+      <div class="lb-bar"><div class="lb-bar-fill" style="width:${total > 0 ? Math.round((p.score/total)*100) : 0}%"></div></div>
+      <div class="lb-score">${p.score}/${total}</div>
+    </div>
+  `).join('');
+
+  renderHome();
+  showPage('results');
+}
+
+function replayCurrentQuiz() {
+  if (!activeQuiz) { showPage('home'); return; }
+  playerScore = 0;
+  currentQ = 0;
+  gameAnswers = new Array(activeQuiz.questions.length).fill(null);
+  gamePlayers = gamePlayers.map(p => ({...p, score: 0}));
+  showPage('play');
+  renderQuestion();
+}
+
+// ---- INIT ----
+renderHome();
+</script>
+</body>
+</html>
