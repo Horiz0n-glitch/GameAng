@@ -555,7 +555,7 @@ function renderPlay() {
           <span class="q-counter">Pregunta ${qIndex + 1} / ${total}</span>
           <div class="timer-ring ${state.timeLeft < 5 ? 'emergency' : ''}">${state.activeQuiz.timePerQ > 0 ? state.timeLeft : '∞'}</div>
         </div>
-        <div class="q-text animate-in" key="${qIndex}">${q.text}</div>
+        <div class="q-text" key="${qIndex}">${q.text}</div>
         <p style="color:var(--muted); font-size:0.85rem; margin-bottom:15px">
           Seleccioná la respuesta correcta
         </p>
@@ -564,17 +564,11 @@ function renderPlay() {
             const isSelected = currentAnswers.includes(i);
             const isActuallyCorrect = q.correct.includes(i);
             let feedbackClass = '';
-            let animationClass = '';
             if (isSelected) {
               feedbackClass = isActuallyCorrect ? 'correct' : 'wrong';
-              if (state.showingFeedback) {
-                animationClass = isActuallyCorrect ? 'animate-winner' : 'animate-wrong';
-              }
-            } else if (state.showingFeedback && !isActuallyCorrect) {
-              animationClass = 'animate-fall';
             }
             return `
-              <button class="answer-btn ${feedbackClass} ${animationClass}" 
+              <button class="answer-btn ${feedbackClass}" 
                 ${(currentAnswers.length > 0 && !state.showingFeedback) || state.showingFeedback ? 'disabled' : ''}
                 onclick="window.actions.selectStudentAnswer(${i})">
                 <div class="option-letter ${['opt-a','opt-b','opt-c','opt-d','opt-e','opt-f','opt-g','opt-h'][i]}">${String.fromCharCode(65+i)}</div>

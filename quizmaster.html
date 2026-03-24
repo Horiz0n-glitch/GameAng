@@ -108,7 +108,7 @@
     font-weight: 600;
     font-size: 0.9rem;
     cursor: pointer;
-    transition: all .2s;
+    cursor: pointer;
     display: inline-flex; align-items: center; gap: 8px;
   }
   .btn-primary {
@@ -116,7 +116,7 @@
     color: white;
     box-shadow: 0 4px 16px rgba(108,99,255,0.35);
   }
-  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(108,99,255,0.45); }
+  .btn-primary:hover:not(:disabled) { box-shadow: 0 6px 24px rgba(108,99,255,0.45); }
   .btn-secondary {
     background: var(--white);
     color: var(--text);
@@ -191,11 +191,11 @@
     box-shadow: var(--shadow);
     padding: 24px;
     cursor: pointer;
-    transition: all .22s;
+    cursor: pointer;
     position: relative;
     overflow: hidden;
   }
-  .quiz-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); border-color: var(--accent1); }
+  .quiz-card:hover { box-shadow: var(--shadow-lg); border-color: var(--accent1); }
   .quiz-card-color {
     height: 6px;
     border-radius: 6px;
@@ -247,7 +247,6 @@
     font-size: 0.95rem;
     background: var(--white);
     color: var(--text);
-    transition: border .2s;
     outline: none;
   }
   .form-input:focus, .form-select:focus { border-color: var(--accent1); }
@@ -276,7 +275,6 @@
     border: 1.5px solid var(--border);
     padding: 24px;
     box-shadow: var(--shadow);
-    transition: border .2s;
   }
   .question-card:hover { border-color: var(--accent1); }
   .question-num {
@@ -330,9 +328,8 @@
   .color-dot {
     width: 22px; height: 22px; border-radius: 50%;
     cursor: pointer; border: 2px solid transparent;
-    transition: transform .15s;
   }
-  .color-dot:hover, .color-dot.selected { transform: scale(1.25); border-color: var(--text); }
+  .color-dot:hover, .color-dot.selected { border-color: var(--text); }
 
   /* GAME LOBBY */
   .lobby-card {
@@ -387,7 +384,6 @@
     height: 100%;
     background: linear-gradient(90deg, var(--accent1), var(--accent4));
     border-radius: 8px;
-    transition: width .4s ease;
   }
   .q-header {
     display: flex; align-items: center; justify-content: space-between;
@@ -425,7 +421,6 @@
     background: var(--white);
     text-align: left;
     cursor: pointer;
-    transition: all .2s;
     display: flex; align-items: center; gap: 12px;
     font-family: 'DM Sans', sans-serif;
     font-size: 0.95rem; font-weight: 500;
@@ -529,7 +524,6 @@
     padding: 32px;
     width: 90%; max-width: 480px;
     box-shadow: var(--shadow-lg);
-    animation: slideUp .3s ease;
   }
   @keyframes slideUp {
     from { transform: translateY(30px); opacity: 0; }
@@ -549,7 +543,6 @@
     padding: 12px 24px; border-radius: 30px;
     font-size: 0.9rem; font-weight: 500;
     z-index: 300;
-    transition: transform .3s ease;
     pointer-events: none;
     white-space: nowrap;
   }
