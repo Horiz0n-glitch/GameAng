@@ -28,7 +28,7 @@ services:
     labels:
       # Dokploy / Traefik labels for automatic HTTPS
       - "traefik.enable=true"
-      - "traefik.http.routers.quizmaster.rule=Host(`quizmaster.tudominio.com`)"
+      - "traefik.http.routers.quizmaster.rule=Host(`quizmaster.horizonsoftware.com.ar`)"
       - "traefik.http.routers.quizmaster.entrypoints=websecure"
       - "traefik.http.routers.quizmaster.tls.certresolver=letsencrypt"
       - "traefik.http.services.quizmaster.loadbalancer.server.port=80"
