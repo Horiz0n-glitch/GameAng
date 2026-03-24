@@ -222,7 +222,7 @@ function renderHome() {
             <div class="quiz-card-title">${q.name}</div>
             <div class="quiz-card-meta">${q.questions.length} preguntas · ${q.timePerQ || 20}s por pregunta</div>
             <div class="quiz-card-actions">
-              <button class="btn btn-primary" onclick="window.actions.manageSession(${i})">📊 Resultados</button>
+              <button class="btn btn-primary" onclick="window.actions.manageSession(${i})">🚀 Iniciar / Monitorear</button>
               <button class="btn btn-secondary" onclick="window.actions.editQuiz(${i})">✏ Editar</button>
               <button class="btn btn-danger" onclick="window.actions.deleteQuiz(${i})">🗑</button>
             </div>
@@ -386,7 +386,7 @@ function renderPlay() {
           </div>
           <div style="display:flex; gap:10px">
             <button class="btn btn-secondary" onclick="window.actions.copyLink('${window.location.origin}${window.location.pathname}?session=${state.session.code}')">📋 Link</button>
-            <button class="btn btn-danger" onclick="window.actions.endSession()">Finalizar todo</button>
+            <button class="btn btn-outline-secondary" onclick="window.actions.endSession()">🏠 Salir</button>
           </div>
         </div>
         
@@ -708,25 +708,38 @@ window.actions = {
     
     let session;
     if (snap.empty) {
-      // Bug #8 fix: create session in 'waiting' state, not 'playing'
+      // Sessions are always created in 'playing' state — no teacher initiation needed
       const code = Math.random().toString(36).substring(2, 8).toUpperCase();
       session = { 
         code, 
         quizId: quiz.id, 
-        status: 'waiting', 
+        status: 'playing', 
         currentQIndex: 0, 
         createdAt: serverTimestamp() 
       };
       await setDoc(doc(db, 'sessions', code), session);
       session.id = code;
     } else {
-      // Pick most recent to show its results/monitoring
       const sessions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       session = sessions.sort((a, b) => {
           const tA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
           const tB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
           return tB - tA;
       })[0];
+
+      // If session is finished, create a new one to keep it always available
+      if (session.status === 'finished') {
+        const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+        session = { 
+          code, 
+          quizId: quiz.id, 
+          status: 'playing', 
+          currentQIndex: 0, 
+          createdAt: serverTimestamp() 
+        };
+        await setDoc(doc(db, 'sessions', code), session);
+        session.id = code;
+      }
     }
     
     state.session = session;
@@ -751,8 +764,8 @@ window.actions = {
     if (!sessSnap.exists()) { await showAlert('Código inválido. Pedile el código correcto al profe.', 'error'); return; }
 
     const sessionData = sessSnap.data();
-    if (sessionData.status === 'finished') { await showAlert('Esta sesión ya terminó. Pedile al profe que inicie una nueva.', 'warning'); return; }
-
+    // No more status === 'finished' check — game is always available!
+    
     // Bug #11 fix: check for duplicate player names
     const playerRef = doc(db, 'sessions', code, 'players', name);
     const existingPlayer = await getDoc(playerRef);
@@ -784,10 +797,7 @@ window.actions = {
         window.actions.startTimer();
         setPage('play');
       }
-      if (data.status === 'finished') {
-        window.actions.stopTimer();
-        setPage('results');
-      }
+      // No more data.status === 'finished' listener for students — progress is individual
       
       render();
     });
@@ -798,7 +808,15 @@ window.actions = {
       render();
     });
 
-    setPage('lobby');
+    // Go directly to play if session is already active — no lobby wait needed
+    state.localQIndex = 0;
+    if (state.session.status === 'playing') {
+      window.actions.startTimer();
+      setPage('play');
+    } else {
+      // Fallback: session is waiting (shouldn't happen with auto-play, but just in case)
+      setPage('lobby');
+    }
   },
 
   startPlay: async () => {
@@ -901,8 +919,11 @@ window.actions = {
   },
 
   endSession: async () => {
-    await updateDoc(doc(db, 'sessions', state.session.id), { status: 'finished' });
-    setPage('results');
+    // Just return home. Don't set status: 'finished' globally so the quiz stays available.
+    state.session = null;
+    state.activeQuiz = null;
+    state.players = [];
+    setPage('home');
   },
 
   copyLink: (url) => {
