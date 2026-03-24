@@ -375,7 +375,7 @@ function renderLobby() {
 function renderPlay() {
   const isProfe = state.role === 'profe';
   
-  if (isProfe) {
+  if (isProfe && !state.isPreview) {
     // Profe sees real-time overview
     return `
       <div class="page active">
@@ -386,6 +386,7 @@ function renderPlay() {
           </div>
           <div style="display:flex; gap:10px">
             <button class="btn btn-secondary" onclick="window.actions.copyLink('${window.location.origin}${window.location.pathname}?session=${state.session.code}')">📋 Link</button>
+            <button class="btn btn-outline-primary" onclick="window.actions.startPreview()">👀 Previsualizar</button>
             <button class="btn btn-outline-secondary" onclick="window.actions.endSession()">🏠 Salir</button>
           </div>
         </div>
@@ -417,11 +418,20 @@ function renderPlay() {
     `;
   }
 
-  // Student view
-  const total = state.activeQuiz.questions.length;
-  const qIndex = state.localQIndex;
-  
-  if (qIndex >= total) {
+  // Student view OR Preview view
+  if (state.role === 'alumno' || state.isPreview) {
+    const total = state.activeQuiz.questions.length;
+    const qIndex = state.localQIndex;
+    
+    // Header for Preview
+    const previewHeader = state.isPreview ? `
+      <div style="background:var(--accent1); color:white; padding:8px; border-radius:10px; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center; font-size:0.9rem">
+        <span>👀 MODO PREVISUALIZACIÓN</span>
+        <button class="btn" style="background:rgba(255,255,255,0.2); color:white; padding:4px 10px; font-size:0.75rem" onclick="window.actions.backToMonitor()">Volver al Monitoreo</button>
+      </div>
+    ` : '';
+
+    if (qIndex >= total) {
     const sorted = [...state.players].sort((a,b) => b.score - a.score);
     return `
       <div class="page active">
@@ -453,11 +463,12 @@ function renderPlay() {
   }
 
   const q = state.activeQuiz.questions[qIndex];
-  const player = state.players.find(p => p.name === state.playerName);
-  const currentAnswers = player?.currentAnswer || [];
+  const player = state.role === 'alumno' ? state.players.find(p => p.name === state.playerName) : null;
+  const currentAnswers = state.isPreview ? (state.previewAnswer || []) : (player?.currentAnswer || []);
   
   return `
     <div class="page active">
+      ${previewHeader}
       <div class="play-screen">
         <div class="q-header">
           <span class="q-counter">Pregunta ${qIndex + 1} / ${total}</span>
@@ -492,7 +503,10 @@ function renderPlay() {
         </div>
       </div>
     </div>
-  `;
+    `;
+  }
+
+  return '<div class="page active">Cargando...</div>';
 }
 
 function renderResults() {
@@ -864,6 +878,13 @@ window.actions = {
   },
 
   selectStudentAnswer: async (idx) => {
+    if (state.isPreview) {
+      if (state.previewAnswer?.length > 0) return;
+      state.previewAnswer = [idx];
+      render();
+      return;
+    }
+    
     let player = state.players.find(p => p.name === state.playerName);
     if (!player.currentAnswer) player.currentAnswer = [];
     
@@ -874,6 +895,8 @@ window.actions = {
     player.currentAnswer = [idx];
     render();
     
+    if (state.isPreview) return; // Don't sync to Firebase in preview mode
+
     // Sync immediately to Firebase so the choice is locked in the cloud too
     const playerRef = doc(db, 'sessions', state.session.id, 'players', state.playerName);
     await updateDoc(playerRef, { currentAnswer: [idx] });
@@ -882,8 +905,17 @@ window.actions = {
   submitAnswer: async () => {
     window.actions.stopTimer();
     const total = state.activeQuiz.questions.length;
-    const playerRef = doc(db, 'sessions', state.session.id, 'players', state.playerName);
     const q = state.activeQuiz.questions[state.localQIndex];
+
+    if (state.isPreview) {
+      state.localQIndex++;
+      state.previewAnswer = [];
+      if (state.localQIndex < total) window.actions.startTimer();
+      render();
+      return;
+    }
+
+    const playerRef = doc(db, 'sessions', state.session.id, 'players', state.playerName);
     const player = state.players.find(p => p.name === state.playerName);
     const chosen = player?.currentAnswer || [];
     
@@ -894,7 +926,6 @@ window.actions = {
     
     let newScore = (player?.score || 0);
     if (isCorrect) newScore++;
-
     // Bug #1 fix: save the index BEFORE incrementing
     const answeredQIndex = state.localQIndex;
     state.localQIndex++;
@@ -934,7 +965,22 @@ window.actions = {
     state.session = null;
     state.activeQuiz = null;
     state.players = [];
+    state.isPreview = false;
     setPage('home');
+  },
+
+  startPreview: () => {
+    state.isPreview = true;
+    state.localQIndex = 0;
+    state.timeLeft = state.activeQuiz.timePerQ || 20;
+    render();
+    window.actions.startTimer();
+  },
+
+  backToMonitor: () => {
+    state.isPreview = false;
+    window.actions.stopTimer();
+    render();
   },
 
   copyLink: (url) => {
