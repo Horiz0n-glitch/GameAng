@@ -249,6 +249,19 @@ function renderCreator() {
       <div class="creator-layout">
         <div class="creator-sidebar">
           <div class="form-group">
+            <label class="form-label">Modo de juego</label>
+            <select class="form-select" id="qz-mode" onchange="window.actions.updateQuizMeta('mode', this.value)">
+              <option value="quiz" ${state.activeQuiz?.mode === 'quiz' || !state.activeQuiz?.mode ? 'selected' : ''}>Cuestionario (Trivia)</option>
+              <option value="word_cloud" ${state.activeQuiz?.mode === 'word_cloud' ? 'selected' : ''}>Nube de Palabras</option>
+            </select>
+          </div>
+          ${state.activeQuiz?.mode === 'word_cloud' ? `
+          <div class="form-group">
+            <label class="form-label">Palabras por alumno</label>
+            <input type="number" class="form-input" value="${state.activeQuiz?.maxWords || 3}" min="1" max="10" oninput="window.actions.updateQuizMeta('maxWords', this.value)" />
+          </div>
+          ` : ''}
+          <div class="form-group">
             <label class="form-label">Nombre del Quiz *</label>
             <input class="form-input" id="qz-name" value="${state.activeQuiz?.name || ''}" placeholder="Ej: Historia Argentina" oninput="window.actions.updateQuizMeta('name', this.value)" />
           </div>
@@ -272,7 +285,9 @@ function renderCreator() {
             <p style="font-size:0.75rem; color:var(--muted)">Sube una de tu pc o pega el enlace arriba.</p>
           </div>
           <hr style="border:none; border-top:1px solid var(--border); margin:16px 0">
+          ${state.activeQuiz?.mode === 'word_cloud' && state.activeQuiz?.questions?.length >= 1 ? '' : `
           <button class="btn btn-secondary" onclick="window.actions.addQuestion()" style="width:100%; justify-content:center">＋ Agregar pregunta</button>
+          `}
         </div>
         <div class="creator-main" id="q-container">
           ${!state.activeQuiz?.questions?.length ? `
@@ -288,6 +303,7 @@ function renderCreator() {
                 <button class="btn btn-danger" onclick="window.actions.removeQuestion(${qi})" style="padding:4px 10px;font-size:.75rem">✕</button>
               </div>
               <input class="form-input" placeholder="Pregunta..." value="${q.text || ''}" oninput="window.actions.updateQ(${qi}, 'text', this.value)" />
+              ${state.activeQuiz?.mode !== 'word_cloud' ? `
               <div class="options-grid">
                 ${q.options.map((opt, oi) => `
                   <div class="option-row">
@@ -298,6 +314,9 @@ function renderCreator() {
                 `).join('')}
               </div>
               <button class="add-option-btn" onclick="window.actions.addOpt(${qi})">＋ Agregar opción</button>
+              ` : `
+              <p style="color:var(--muted); font-size:0.8rem; margin-top:12px">Los alumnos responderán libremente para formar la nube.</p>
+              `}
             </div>
           `).join('')}
         </div>
@@ -554,42 +573,55 @@ function renderPlay() {
         </div>
         <div class="q-text animate-in" key="${qIndex}">${q.text}</div>
         <p style="color:var(--muted); font-size:0.85rem; margin-bottom:15px">
-          Seleccioná la respuesta correcta
+          ${state.activeQuiz.mode === 'word_cloud' ? 'Escribí tus palabras para sumarlas a la nube' : 'Seleccioná la respuesta correcta'}
         </p>
-        <div class="answers-grid">
-          ${q.options.map((opt, i) => {
-            const isSelected = currentAnswers.includes(i);
-            const isActuallyCorrect = q.correct.includes(i);
-            let feedbackClass = '';
-            let animationClass = '';
-            if (isSelected) {
-              feedbackClass = isActuallyCorrect ? 'correct' : 'wrong';
-              if (state.showingFeedback) {
-                animationClass = isActuallyCorrect ? 'animate-winner' : 'animate-wrong';
+        ${state.activeQuiz.mode === 'word_cloud' ? `
+          <div class="word-inputs-grid">
+            ${Array.from({length: state.activeQuiz.maxWords || 3}).map((_, i) => `
+              <input type="text" class="form-input q-word-input" 
+                placeholder="Palabra ${i+1}" maxlength="20" 
+                style="text-transform:lowercase"
+                oninput="this.value = this.value.toLowerCase().replace(/[^a-zñáéíóú]/gi, '')" />
+            `).join('')}
+          </div>
+        ` : `
+          <div class="answers-grid">
+            ${q.options.map((opt, i) => {
+              const isSelected = currentAnswers.includes(i);
+              const isActuallyCorrect = q.correct.includes(i);
+              let feedbackClass = '';
+              let animationClass = '';
+              if (isSelected) {
+                feedbackClass = isActuallyCorrect ? 'correct' : 'wrong';
+                if (state.showingFeedback) {
+                  animationClass = isActuallyCorrect ? 'animate-winner' : 'animate-wrong';
+                }
+              } else if (state.showingFeedback && !isActuallyCorrect) {
+                animationClass = 'animate-fall';
               }
-            } else if (state.showingFeedback && !isActuallyCorrect) {
-              animationClass = 'animate-fall';
-            }
-            return `
-              <button class="answer-btn ${feedbackClass} ${animationClass}" 
-                ${(currentAnswers.length > 0 && !state.showingFeedback) || state.showingFeedback ? 'disabled' : ''}
-                onclick="window.actions.selectStudentAnswer(${i})">
-                <div class="option-letter ${['opt-a','opt-b','opt-c','opt-d','opt-e','opt-f','opt-g','opt-h'][i]}">${String.fromCharCode(65+i)}</div>
-                ${opt || `Opción ${i+1}`}
-              </button>
-            `;
-          }).join('')}
-        </div>
+              return `
+                <button class="answer-btn ${feedbackClass} ${animationClass}" 
+                  ${(currentAnswers.length > 0 && !state.showingFeedback) || state.showingFeedback ? 'disabled' : ''}
+                  onclick="window.actions.selectStudentAnswer(${i})">
+                  <div class="option-letter ${['opt-a','opt-b','opt-c','opt-d','opt-e','opt-f','opt-g','opt-h'][i]}">${String.fromCharCode(65+i)}</div>
+                  ${opt || `Opción ${i+1}`}
+                </button>
+              `;
+            }).join('')}
+          </div>
+        `}
         <div style="margin-top:24px; text-align:center">
-          ${state.showingFeedback ? `
-            <button class="game-btn" onclick="window.actions.proceedToNext()" style="width:100%">
-              ${qIndex === total - 1 ? 'Ver Resultados Finales →' : 'Siguiente Pregunta →'}
-            </button>
-          ` : `
-            <button class="game-btn" onclick="window.actions.submitAnswer()" style="width:100%" ${currentAnswers.length === 0 ? 'disabled' : ''}>
-              Confirmar Respuesta ✔
-            </button>
-          `}
+        ${state.activeQuiz.mode === 'word_cloud' ? `
+          <button class="game-btn" onclick="window.actions.submitAnswer()" style="width:100%">Enviar palabras ✔</button>
+        ` : state.showingFeedback ? `
+          <button class="game-btn" onclick="window.actions.proceedToNext()" style="width:100%">
+            ${qIndex === total - 1 ? 'Ver Resultados Finales →' : 'Siguiente Pregunta →'}
+          </button>
+        ` : `
+          <button class="game-btn" onclick="window.actions.submitAnswer()" style="width:100%" ${currentAnswers.length === 0 ? 'disabled' : ''}>
+            Confirmar Respuesta ✔
+          </button>
+        `}
         </div>
       </div>
     </div>
@@ -607,21 +639,50 @@ function renderResults() {
     <div class="page active">
       <div class="results-card">
         <div class="results-header">
-          <div style="font-size:2.5rem">🏆</div>
-          <h2 style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.6rem;margin:8px 0">Podio Final: ${state.activeQuiz.name}</h2>
+          <div style="font-size:2.5rem">${state.activeQuiz.mode === 'word_cloud' ? '☁️' : '🏆'}</div>
+          <h2 style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.6rem;margin:8px 0">
+            ${state.activeQuiz.mode === 'word_cloud' ? 'Nube de la clase: ' : 'Podio Final: '} ${state.activeQuiz.name}
+          </h2>
         </div>
-        <div class="leaderboard">
-          ${sorted.map((p, i) => `
-            <div class="lb-row">
-              <div class="lb-rank ${i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : ''}">${i < 3 ? ['🥇','🥈','🥉'][i] : i+1}</div>
-              <div class="lb-name">
-                ${p.name} ${state.playerName && p.name === state.playerName ? '<span class="badge badge-purple">Tú</span>' : ''}
+
+        ${state.activeQuiz.mode === 'word_cloud' ? `
+          <div class="word-cloud" id="word-cloud-display">
+            ${(() => {
+              const allWords = [];
+              state.players.forEach(p => {
+                Object.values(p.responses || {}).forEach(r => {
+                  if (r.words && Array.isArray(r.words)) allWords.push(...r.words);
+                });
+              });
+              const counts = {};
+              allWords.forEach(w => counts[w.toLowerCase()] = (counts[w.toLowerCase()] || 0) + 1);
+              const sorted = Object.entries(counts).sort((a,b) => b[1] - a[1]);
+              const max = sorted[0] ? sorted[0][1] : 1;
+              const colors = ['#6c63ff', '#ff6b6b', '#43d9ad', '#ffc94a', '#ff8c42', '#8e44ad'];
+              
+              if (allWords.length === 0) return '<p style="color:var(--muted)">Aún no hay palabras suficientes.</p>';
+              
+              return sorted.map(([word, freq]) => {
+                const size = 1 + (freq / max) * 2;
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                return `<span class="wc-word" style="font-size:${size}rem; color:${color}; opacity:${0.6 + (freq/max)*0.4}">${word}</span>`;
+              }).join('');
+            })()}
+          </div>
+        ` : `
+          <div class="leaderboard">
+            ${sorted.map((p, i) => `
+              <div class="lb-row">
+                <div class="lb-rank ${i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : ''}">${i < 3 ? ['🥇','🥈','🥉'][i] : i+1}</div>
+                <div class="lb-name">
+                  ${p.name} ${state.playerName && p.name === state.playerName ? '<span class="badge badge-purple">Tú</span>' : ''}
+                </div>
+                <div class="lb-bar"><div class="lb-bar-fill" style="width:${total > 0 ? Math.round(((p.score||0)/total)*100) : 0}%"></div></div>
+                <div class="lb-score">${p.score || 0}/${total}</div>
               </div>
-              <div class="lb-bar"><div class="lb-bar-fill" style="width:${total > 0 ? Math.round(((p.score||0)/total)*100) : 0}%"></div></div>
-              <div class="lb-score">${p.score || 0}/${total}</div>
-            </div>
-          `).join('')}
-        </div>
+            `).join('')}
+          </div>
+        `}
         <div style="display:flex;gap:10px;margin-top:24px;justify-content:center">
           <button class="btn btn-primary" onclick="window.router.go('landing')">🏠 Salir</button>
         </div>
@@ -707,12 +768,23 @@ window.actions = {
   updateQuizMeta: (field, val) => {
     if (!state.activeQuiz) return;
     if (field === 'timePerQ') val = parseInt(val) || 0;
+    if (field === 'maxWords') val = parseInt(val) || 3;
+    if (field === 'mode') {
+      if (val === 'word_cloud' && state.activeQuiz.questions.length > 1) {
+        if (!confirm('Modo Nube de Palabras solo permite una consigna. ¿Eliminar las demás?')) {
+          document.getElementById('qz-mode').value = state.activeQuiz.mode || 'quiz';
+          return;
+        }
+        state.activeQuiz.questions = [state.activeQuiz.questions[0]];
+      }
+    }
     state.activeQuiz[field] = val;
+    render();
   },
 
   newQuiz: () => {
     state.editingQuizIdx = null;
-    state.activeQuiz = { name: '', timePerQ: 20, questions: [], color: '#6c63ff', bgUrl: '' };
+    state.activeQuiz = { name: '', timePerQ: 20, mode: 'quiz', maxWords: 3, questions: [], color: '#6c63ff', bgUrl: '' };
     setPage('creator');
   },
 
@@ -988,33 +1060,44 @@ window.actions = {
     window.actions.stopTimer();
     const total = state.activeQuiz.questions.length;
     const q = state.activeQuiz.questions[state.localQIndex];
-
     const playerRef = doc(db, 'sessions', state.session.id, 'players', state.playerName);
     const player = state.players.find(p => p.name === state.playerName);
-    const chosen = player?.currentAnswer || [];
     
-    // Check correctness: grant point if chosen option is among the correct ones
-    const correctArr = Array.isArray(q.correct) ? q.correct : [q.correct];
-    const isCorrect = chosen.length > 0 && 
-                      chosen.every(val => correctArr.includes(val));
-    
+    let responseData = {};
+    let isCorrect = false;
     let newScore = (player?.score || 0);
-    if (isCorrect) newScore++;
 
-    // Update progress state
+    if (state.activeQuiz.mode === 'word_cloud') {
+      const inputs = document.querySelectorAll('.q-word-input');
+      const words = Array.from(inputs).map(i => i.value.trim().toLowerCase()).filter(w => w);
+      if (words.length === 0) { 
+        showToast('Debes escribir al menos una palabra', 'warning'); 
+        window.actions.startTimer(); 
+        return; 
+      }
+      responseData = { words: words };
+      isCorrect = true; // Just count submissions as "correct" for participation
+      newScore = 1; 
+      state.showingFeedback = false; // No feedback in word cloud
+    } else {
+      const chosen = player?.currentAnswer || [];
+      const correctArr = Array.isArray(q.correct) ? q.correct : [q.correct];
+      isCorrect = chosen.length > 0 && chosen.every(val => correctArr.includes(val));
+      if (isCorrect) newScore++;
+      responseData = { chosen: chosen, isCorrect: isCorrect };
+      state.showingFeedback = true;
+    }
+
     const answeredQIndex = state.localQIndex;
     state.localQIndex++;
     const isFinished = state.localQIndex >= total;
 
-    // Show feedback locally first
-    state.showingFeedback = true;
     render();
 
     // Sync to DB
     await updateDoc(playerRef, {
       [`responses.${answeredQIndex}`]: { 
-        chosen: chosen,
-        isCorrect: isCorrect,
+        ...responseData,
         answeredAt: serverTimestamp()
       },
       currentAnswer: [], 
@@ -1022,6 +1105,10 @@ window.actions = {
       qProgress: state.localQIndex, 
       finished: isFinished
     });
+
+    if (state.activeQuiz.mode === 'word_cloud') {
+      window.actions.proceedToNext();
+    }
   },
 
   proceedToNext: () => {
