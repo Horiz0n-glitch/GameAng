@@ -675,14 +675,11 @@ nav {
 .answer-btn.animate-fall {
   animation: fall-and-fade 0.8s cubic-bezier(.55,0,.85,.36) forwards;
   pointer-events: none;
-}
-
-.answer-btn.animate-winner {
-  animation: winner-pop 0.6s cubic-bezier(.17,.67,.91,.5) infinite alternate;
+}.answer-btn.animate-winner {
+  animation: winner-pop 0.6s cubic-bezier(.17,.67,.91,.5) forwards;
   z-index: 100 !important;
   box-shadow: 0 0 40px rgba(67, 217, 173, 0.4) !important;
 }
-
 .answer-btn.animate-wrong {
   animation: shake-wrong 0.4s ease-in-out;
 }
