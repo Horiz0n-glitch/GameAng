@@ -573,8 +573,8 @@ function renderPlay() {
             `;
           }).join('')}
         </div>
-        <div style="margin-top:20px; text-align:center">
-          <button class="btn btn-primary" onclick="window.actions.submitAnswer()" style="width:100%; justify-content:center; padding:14px" ${currentAnswers.length === 0 ? 'disabled' : ''}>
+        <div style="margin-top:24px; text-align:center">
+          <button class="game-btn" onclick="window.actions.submitAnswer()" style="width:100%" ${currentAnswers.length === 0 ? 'disabled' : ''}>
             ${qIndex === total - 1 ? 'Finalizar Quiz →' : 'Siguiente Pregunta →'}
           </button>
         </div>

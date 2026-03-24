@@ -14,6 +14,14 @@
   --shadow-lg: 0 8px 40px rgba(15,17,23,0.13);
   --radius: 20px;
   --radius-sm: 12px;
+  --game-1: #9956DE;
+  --game-2: #7274ED;
+  --game-3: #1FA7E1;
+  --game-4: #6ED1CF;
+  --game-5: #75D06A;
+  --game-6: #FFB356;
+  --game-7: #FF8B8B;
+  --game-8: #FB96BB;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
@@ -314,20 +322,22 @@ nav {
   display: flex; align-items: center; gap: 8px;
 }
 .option-letter {
-  width: 30px; height: 30px; min-width: 30px;
-  border-radius: 8px;
+  width: 44px; height: 44px; min-width: 44px;
+  border-radius: 12px;
   display: flex; align-items: center; justify-content: center;
-  font-weight: 700; font-size: 0.85rem;
+  font-family: 'Nunito', sans-serif;
+  font-weight: 900; font-size: 1.25rem;
   color: white;
+  box-shadow: inset 0 -3px 0 rgba(0,0,0,0.15);
 }
-.opt-a { background: var(--accent1); }
-.opt-b { background: var(--accent5); }
-.opt-c { background: var(--accent4); }
-.opt-d { background: var(--accent2); color: var(--text); }
-.opt-e { background: var(--accent3); }
-.opt-f { background: #8e44ad; }
-.opt-g { background: #2c3e50; }
-.opt-h { background: #d35400; }
+.opt-a { background: var(--game-1); }
+.opt-b { background: var(--game-2); }
+.opt-c { background: var(--game-3); }
+.opt-d { background: var(--game-4); }
+.opt-e { background: var(--game-5); }
+.opt-f { background: var(--game-6); }
+.opt-g { background: var(--game-7); }
+.opt-h { background: var(--game-8); }
 
 .correct-radio {
   display: flex; align-items: center; gap: 6px;
@@ -445,23 +455,70 @@ nav {
   gap: 12px;
 }
 .answer-btn {
-  padding: 18px 20px;
-  border-radius: var(--radius);
+  padding: 16px 20px;
+  border-radius: 24px;
   border: 2px solid var(--border);
   background: var(--white);
   text-align: left;
   cursor: pointer;
-  transition: all .2s;
-  display: flex; align-items: center; gap: 12px;
-  font-family: 'Inter', sans-serif;
-  font-size: 0.95rem; font-weight: 500;
-  color: var(--text);
+  transition: all .15s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex; align-items: center; gap: 16px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 1.15rem; font-weight: 800;
+  color: #4a5568;
   width: 100%;
+  box-shadow: 0 6px 0 var(--border);
+  position: relative;
+  transform: translateY(0);
 }
-.answer-btn:hover:not(:disabled) { border-color: var(--accent1); background: #f4f0ff; transform: translateY(-2px); box-shadow: var(--shadow); }
-.answer-btn.correct { background: #e0fff5; border-color: var(--accent4); color: #1a9e75; }
-.answer-btn.wrong { background: #fff0f0; border-color: var(--accent3); color: var(--accent3); }
-.answer-btn:disabled { cursor: default; pointer-events: none; opacity: 0.8; }
+.answer-btn:hover:not(:disabled) { 
+  border-color: #cbd5e1; 
+  background: #f8fafc; 
+}
+.answer-btn:active:not(:disabled), .answer-btn.selected { 
+  transform: translateY(6px); 
+  box-shadow: 0 0 0 transparent; 
+}
+.answer-btn.selected {
+  border-color: var(--game-3);
+  background: #f0f9ff;
+  color: var(--game-3);
+  box-shadow: 0 0 0 transparent;
+}
+.answer-btn.correct { 
+  background: #f0fdf4; 
+  border-color: var(--game-5); 
+  color: var(--game-5); 
+  box-shadow: 0 0 0 transparent;
+  transform: translateY(6px);
+}
+.answer-btn.wrong { 
+  background: #fef2f2; 
+  border-color: var(--game-7); 
+  color: var(--game-7); 
+  box-shadow: 0 0 0 transparent;
+  transform: translateY(6px);
+}
+.answer-btn:disabled { cursor: default; pointer-events: none; opacity: 0.95; filter: grayscale(20%); }
+
+.game-btn {
+  background: var(--game-1);
+  color: white;
+  font-family: 'Nunito', sans-serif;
+  font-weight: 900;
+  font-size: 1.25rem;
+  padding: 18px 32px;
+  border-radius: 28px;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 8px 0 #7b45b4;
+  transition: all .15s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  letter-spacing: 0.02em;
+}
+.game-btn:hover:not(:disabled) { box-shadow: 0 10px 0 #7b45b4; transform: translateY(-2px); }
+.game-btn:active:not(:disabled) { transform: translateY(8px); box-shadow: 0 0 0 #7b45b4; }
+.game-btn:disabled { background: #cbd5e1; box-shadow: 0 8px 0 #94a3b8; cursor: not-allowed; }
 
 /* RESULTS */
 .results-card {
