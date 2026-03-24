@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  quizmaster:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: quizmaster:latest
+    container_name: quizmaster_app
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    environment:
+      - NODE_ENV=production
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    labels:
+      # Dokploy labels (traefik compatible)
+      - "traefik.enable=true"
+      - "traefik.http.routers.quizmaster.rule=Host(`quizmaster.tudominio.com`)"
+      - "traefik.http.routers.quizmaster.entrypoints=websecure"
+      - "traefik.http.routers.quizmaster.tls.certresolver=letsencrypt"
+      - "traefik.http.services.quizmaster.loadbalancer.server.port=80"
