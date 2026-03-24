@@ -779,7 +779,8 @@ window.actions = {
       }
     }
     state.activeQuiz[field] = val;
-    render();
+    // Only render if the mode changes as it affects the UI layout (showing/hiding maxWords and question options)
+    if (field === 'mode') render();
   },
 
   newQuiz: () => {
