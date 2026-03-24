@@ -587,9 +587,14 @@
       <p style="color:var(--muted);font-size:.9rem;margin-bottom:4px">¡Bienvenido de vuelta! 👋</p>
       <div class="home-greeting">Mis <span>Quizzes</span></div>
     </div>
-    <button class="btn btn-primary" onclick="showPage('creator'); newQuiz()">
-      ＋ Nuevo Quiz
-    </button>
+    <div style="display:flex; gap:10px">
+      <button class="btn btn-secondary" onclick="showPage('creator'); newTFQuiz()">
+        ✅ Verdadero o Falso
+      </button>
+      <button class="btn btn-primary" onclick="showPage('creator'); newQuiz()">
+        ＋ Nuevo Quiz
+      </button>
+    </div>
   </div>
 
   <div class="stats-grid">
@@ -768,6 +773,24 @@
 <script>
 // ---- STATE ----
 let quizzes = JSON.parse(localStorage.getItem('qm_quizzes') || '[]');
+if (quizzes.length === 0) {
+  quizzes = [{
+    name: "Verdadero o Falso: Curiosidades",
+    desc: "¿Qué tanto sabés del mundo? Ponete a prueba con estas afirmaciones.",
+    color: "#43d9ad",
+    timePerQ: "20",
+    questions: [
+      { text: "El sol es una estrella.", options: ["Verdadero", "Falso"], correct: 0 },
+      { text: "Los delfines son peces.", options: ["Verdadero", "Falso"], correct: 1 },
+      { text: "La Antártida es el lugar más frío de la Tierra.", options: ["Verdadero", "Falso"], correct: 0 },
+      { text: "El diamante es el material más duro de la Tierra.", options: ["Verdadero", "Falso"], correct: 0 },
+      { text: "La Gran Muralla China se ve desde el espacio.", options: ["Verdadero", "Falso"], correct: 1 }
+    ],
+    createdAt: Date.now()
+  }];
+  localStorage.setItem('qm_quizzes', JSON.stringify(quizzes));
+}
+
 let stats = JSON.parse(localStorage.getItem('qm_stats') || '{"games":0,"totalAcc":0,"totalQ":0}');
 let editingQuizIdx = null;
 let currentColor = '#6c63ff';
@@ -857,6 +880,20 @@ function newQuiz() {
   document.querySelectorAll('.color-dot').forEach(d => {
     d.classList.toggle('selected', d.dataset.color === currentColor);
   });
+  renderQuestions();
+}
+
+function newTFQuiz() {
+  newQuiz();
+  currentQuizName = 'Verdadero o Falso: ';
+  currentColor = '#43d9ad';
+  currentQuizDesc = 'Responde Verdadero o Falso a cada pregunta.';
+  document.getElementById('quiz-name').value = currentQuizName;
+  document.getElementById('quiz-desc').value = currentQuizDesc;
+  // Pre-add 3 TF questions
+  for(let i=0; i<3; i++) {
+    currentQuestions.push({ text: '', options: ['Verdadero', 'Falso'], correct: 0 });
+  }
   renderQuestions();
 }
 

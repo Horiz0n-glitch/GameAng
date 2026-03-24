@@ -203,7 +203,10 @@ function renderHome() {
           <p style="color:var(--muted);font-size:.9rem;margin-bottom:4px">Panel del Profe 👋</p>
           <div class="home-greeting">Mis <span>Quizzes Online</span></div>
         </div>
-        <button class="btn btn-primary" onclick="window.actions.newQuiz()">＋ Nuevo Quiz</button>
+        <div style="display:flex; gap:10px">
+          <button class="btn btn-secondary" onclick="window.actions.newTFQuiz()">✅ Verdadero o Falso</button>
+          <button class="btn btn-primary" onclick="window.actions.newQuiz()">＋ Nuevo Quiz</button>
+        </div>
       </div>
       <div class="stats-grid">
         <div class="stat-card"><div class="stat-label">Mis Quizzes</div><div class="stat-val">${qCount}</div></div>
@@ -713,6 +716,22 @@ window.actions = {
   newQuiz: () => {
     state.editingQuizIdx = null;
     state.activeQuiz = { name: '', timePerQ: 20, questions: [], color: '#6c63ff', bgUrl: '' };
+    setPage('creator');
+  },
+
+  newTFQuiz: () => {
+    state.editingQuizIdx = null;
+    state.activeQuiz = { 
+        name: 'Nuevo Verdadero o Falso', 
+        timePerQ: 20, 
+        questions: [
+            { text: '', options: ['Verdadero', 'Falso'], correct: [0] },
+            { text: '', options: ['Verdadero', 'Falso'], correct: [0] },
+            { text: '', options: ['Verdadero', 'Falso'], correct: [0] }
+        ], 
+        color: '#43d9ad', 
+        bgUrl: '' 
+    };
     setPage('creator');
   },
 
