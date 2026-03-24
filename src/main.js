@@ -100,6 +100,7 @@ let state = {
   session: null,   // { id, code, quizId, status, currentQ, ... }
   players: [],
   playerScore: 0,
+  selectedPlayerDetail: null,
   localQIndex: 0, // Individual progress for automatic mode
   timeLeft: 0,
   timerInterval: null,
@@ -400,9 +401,9 @@ function renderPlay() {
             <div style="width:80px; text-align:right">Puntaje</div>
           </div>
           ${state.players.sort((a,b) => b.score - a.score).map((p, i) => `
-            <div class="lb-row">
+            <div class="lb-row" style="cursor:pointer" onclick="window.actions.viewPlayerDetail('${p.name}')">
               <div class="lb-rank">${i+1}</div>
-              <div class="lb-name">${p.name}</div>
+              <div class="lb-name">${p.name} <span style="font-size:0.7rem; color:var(--accent1); margin-left:5px">🔍 Ver respuestas</span></div>
               <div style="width:100px; text-align:center">
                 <span class="badge ${p.finished ? 'badge-purple' : 'badge-green'}">
                   ${p.finished ? 'Terminado' : `Q${(p.qProgress || 0) + 1}`}
@@ -414,6 +415,49 @@ function renderPlay() {
             </div>
           `).join('')}
         </div>
+
+        ${state.selectedPlayerDetail ? (() => {
+          const p = state.players.find(pl => pl.name === state.selectedPlayerDetail);
+          if (!p) return '';
+          const totalQs = state.activeQuiz.questions.length;
+          return `
+            <div class="modal-overlay open" onclick="window.actions.closePlayerDetail()">
+              <div class="modal" style="max-width:600px; width:95%; max-height:85vh; overflow-y:auto" onclick="event.stopPropagation()">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px">
+                  <h3 style="margin:0">Respuestas de ${p.name}</h3>
+                  <button class="btn btn-secondary" style="padding:5px 10px" onclick="window.actions.closePlayerDetail()">Cerrar</button>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:12px">
+                  ${state.activeQuiz.questions.map((q, idx) => {
+                    const resp = p.responses?.[idx];
+                    const isCorrect = resp?.isCorrect;
+                    const chosen = resp?.chosen || [];
+                    const correctIndices = Array.isArray(q.correct) ? q.correct : [q.correct];
+                    
+                    return `
+                      <div style="border:1px solid var(--border); border-radius:12px; padding:15px; background:${resp ? (isCorrect ? '#f0fff9' : '#fff0f0') : '#f8f8f8'}">
+                        <div style="font-weight:700; font-size:0.9rem; margin-bottom:8px; color:var(--muted)">
+                          Pregunta ${idx + 1} ${resp ? (isCorrect ? '✅ Correcta' : '❌ Incorrecta') : '⏳ Sin responder'}
+                        </div>
+                        <div style="font-weight:600; margin-bottom:10px">${q.text}</div>
+                        
+                        <div style="font-size:0.85rem">
+                          <div style="margin-bottom:5px">
+                            <b>Respuesta del alumno:</b> 
+                            ${chosen.length > 0 ? chosen.map(c => q.options[c]).join(', ') : '<span style="color:var(--muted)">Sin respuesta</span>'}
+                          </div>
+                          <div style="color:${isCorrect ? '#1a9e75' : '#c0392b'}">
+                            <b>Respuesta correcta:</b> ${correctIndices.map(c => q.options[c]).join(', ')}
+                          </div>
+                        </div>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+            </div>
+          `;
+        })() : ''}
       </div>
     `;
   }
@@ -980,6 +1024,16 @@ window.actions = {
   backToMonitor: () => {
     state.isPreview = false;
     window.actions.stopTimer();
+    render();
+  },
+
+  viewPlayerDetail: (name) => {
+    state.selectedPlayerDetail = name;
+    render();
+  },
+
+  closePlayerDetail: () => {
+    state.selectedPlayerDetail = null;
     render();
   },
 
