@@ -652,6 +652,49 @@ nav {
 .toast-error   { background: linear-gradient(135deg, #c0392b, #ff6b6b); }
 .toast-warning { background: linear-gradient(135deg, #e67e22, #ffc94a); color: #1a1a1a; }
 .toast-info    { background: linear-gradient(135deg, #5a52cc, #6c63ff); }
+.toast-info    { background: linear-gradient(135deg, #5a52cc, #6c63ff); }
+
+/* GAME PHYSICS ANIMATIONS */
+@keyframes fall-and-fade {
+  0% { transform: translateY(0) rotate(0); opacity: 1; }
+  100% { transform: translateY(800px) rotate(45deg); opacity: 0; }
+}
+
+@keyframes winner-pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.15) translateY(-10px); }
+  100% { transform: scale(1); }
+}
+
+@keyframes shake-wrong {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-10px); }
+  75% { transform: translateX(10px); }
+}
+
+.answer-btn.animate-fall {
+  animation: fall-and-fade 0.8s cubic-bezier(.55,0,.85,.36) forwards;
+  pointer-events: none;
+}
+
+.answer-btn.animate-winner {
+  animation: winner-pop 0.6s cubic-bezier(.17,.67,.91,.5) infinite alternate;
+  z-index: 100 !important;
+  box-shadow: 0 0 40px rgba(67, 217, 173, 0.4) !important;
+}
+
+.answer-btn.animate-wrong {
+  animation: shake-wrong 0.4s ease-in-out;
+}
+
+.q-text.animate-in {
+  animation: slide-up-fade 0.5s ease-out;
+}
+
+@keyframes slide-up-fade {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
 /* MODAL overlay + card animations */
 .modal-overlay {

@@ -105,7 +105,8 @@ let state = {
   timeLeft: 0,
   timerInterval: null,
   defaultBg: '/bg-default.png',
-  user: null
+  user: null,
+  showingFeedback: false
 };
 
 // --- ROUTER ---
@@ -551,7 +552,7 @@ function renderPlay() {
           <span class="q-counter">Pregunta ${qIndex + 1} / ${total}</span>
           <div class="timer-ring ${state.timeLeft < 5 ? 'emergency' : ''}">${state.activeQuiz.timePerQ > 0 ? state.timeLeft : '∞'}</div>
         </div>
-        <div class="q-text">${q.text}</div>
+        <div class="q-text animate-in" key="${qIndex}">${q.text}</div>
         <p style="color:var(--muted); font-size:0.85rem; margin-bottom:15px">
           Seleccioná la respuesta correcta
         </p>
@@ -560,12 +561,18 @@ function renderPlay() {
             const isSelected = currentAnswers.includes(i);
             const isActuallyCorrect = q.correct.includes(i);
             let feedbackClass = '';
+            let animationClass = '';
             if (isSelected) {
               feedbackClass = isActuallyCorrect ? 'correct' : 'wrong';
+              if (state.showingFeedback) {
+                animationClass = isActuallyCorrect ? 'animate-winner' : 'animate-wrong';
+              }
+            } else if (state.showingFeedback && !isActuallyCorrect) {
+              animationClass = 'animate-fall';
             }
             return `
-              <button class="answer-btn ${feedbackClass}" 
-                ${currentAnswers.length > 0 ? 'disabled' : ''}
+              <button class="answer-btn ${feedbackClass} ${animationClass}" 
+                ${(currentAnswers.length > 0 && !state.showingFeedback) || state.showingFeedback ? 'disabled' : ''}
                 onclick="window.actions.selectStudentAnswer(${i})">
                 <div class="option-letter ${['opt-a','opt-b','opt-c','opt-d','opt-e','opt-f','opt-g','opt-h'][i]}">${String.fromCharCode(65+i)}</div>
                 ${opt || `Opción ${i+1}`}
@@ -574,9 +581,15 @@ function renderPlay() {
           }).join('')}
         </div>
         <div style="margin-top:24px; text-align:center">
-          <button class="game-btn" onclick="window.actions.submitAnswer()" style="width:100%" ${currentAnswers.length === 0 ? 'disabled' : ''}>
-            ${qIndex === total - 1 ? 'Finalizar Quiz →' : 'Siguiente Pregunta →'}
-          </button>
+          ${state.showingFeedback ? `
+            <button class="game-btn" onclick="window.actions.proceedToNext()" style="width:100%">
+              ${qIndex === total - 1 ? 'Ver Resultados Finales →' : 'Siguiente Pregunta →'}
+            </button>
+          ` : `
+            <button class="game-btn" onclick="window.actions.submitAnswer()" style="width:100%" ${currentAnswers.length === 0 ? 'disabled' : ''}>
+              Confirmar Respuesta ✔
+            </button>
+          `}
         </div>
       </div>
     </div>
@@ -987,23 +1000,33 @@ window.actions = {
     
     let newScore = (player?.score || 0);
     if (isCorrect) newScore++;
-    // Bug #1 fix: save the index BEFORE incrementing
+
+    // Update progress state
     const answeredQIndex = state.localQIndex;
     state.localQIndex++;
     const isFinished = state.localQIndex >= total;
 
+    // Show feedback locally first
+    state.showingFeedback = true;
+    render();
+
+    // Sync to DB
     await updateDoc(playerRef, {
-      [`responses.${answeredQIndex}`]: { // Use the saved index, not the already-incremented one
+      [`responses.${answeredQIndex}`]: { 
         chosen: chosen,
         isCorrect: isCorrect,
         answeredAt: serverTimestamp()
       },
-      currentAnswer: [], // Reset for next Q
+      currentAnswer: [], 
       score: newScore,
-      qProgress: state.localQIndex, // Matches the new currently active question
+      qProgress: state.localQIndex, 
       finished: isFinished
     });
+  },
 
+  proceedToNext: () => {
+    state.showingFeedback = false;
+    const isFinished = state.localQIndex >= state.activeQuiz.questions.length;
     if (!isFinished) {
       window.actions.startTimer();
     }
