@@ -428,8 +428,18 @@
   }
   .answer-btn:hover:not(:disabled) { border-color: var(--accent1); background: #f4f0ff; transform: translateY(-2px); box-shadow: var(--shadow); }
   .answer-btn.correct { background: #e0fff5; border-color: var(--accent4); color: #1a9e75; }
-  .answer-btn.wrong { background: #fff0f0; border-color: var(--accent3); color: var(--accent3); }
-  .answer-btn:disabled { cursor: default; pointer-events: none; opacity: 0.8; }
+  .answer-btn.wrong { background: #fff8f8; border-color: #e8c0c0; color: #b89090; opacity: 0.65; }
+  /* The specific option the player chose but was wrong — more prominent */
+  .answer-btn.chosen-wrong { background: #fff0f0; border-color: var(--accent3); color: var(--accent3); opacity: 1; box-shadow: 0 0 0 3px rgba(255,107,107,0.18); }
+  .answer-btn:disabled { cursor: default; pointer-events: none; }
+  /* Speed bonus badge */
+  .speed-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: linear-gradient(135deg, #ffc94a, #ff8c42);
+    color: white; font-weight: 700; font-size: 0.82rem;
+    padding: 4px 12px; border-radius: 20px;
+    animation: popIn .35s ease;
+  }
 
   /* RESULTS */
   .results-card {
@@ -455,6 +465,12 @@
     font-size: 2rem; font-weight: 800; color: var(--accent1);
   }
   .score-of { font-size: 0.78rem; color: var(--muted); }
+  .speed-score-detail {
+    font-size: .82rem; color: var(--muted);
+    margin-top: 8px;
+    display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;
+  }
+  .speed-score-detail span { background: var(--bg); border-radius: 20px; padding: 3px 12px; }
   .leaderboard { display: flex; flex-direction: column; gap: 10px; }
   .lb-row {
     display: flex; align-items: center; gap: 14px;
@@ -901,12 +917,15 @@ let deleteIdx = null;
 let activeQuiz = null;
 let gamePlayers = [];
 let currentQ = 0;
-let playerScore = 0;
+let playerScore = 0;        // base score (1 per correct answer)
+let playerSpeedBonus = 0;   // bonus points accumulated from speed
 let timerInterval = null;
 let gameCode = null;
 let gameAnswers = [];
 let playerName = '';
 let fakeNames = ['Valentina','Lucas','Sofía','Mateo','Emma','Nicolás','Isabella','Tomás','Camila','Sebastián'];
+let shuffledOptions = [];   // per-question shuffled option order [[origIdx, ...], ...]
+let questionStartTime = 0;  // timestamp when current question was rendered
 
 // ---- NAV ----
 function showPage(id) {
@@ -1251,7 +1270,18 @@ function joinGame() {
 function startActualGame() {
   currentQ = 0;
   playerScore = 0;
+  playerSpeedBonus = 0;
   gameAnswers = new Array(activeQuiz.questions.length).fill(null);
+  // Pre-shuffle options for every question
+  shuffledOptions = activeQuiz.questions.map(q => {
+    const indices = q.options.map((_, i) => i);
+    // Fisher-Yates shuffle
+    for (let i = indices.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [indices[i], indices[j]] = [indices[j], indices[i]];
+    }
+    return indices; // shuffledOptions[qi][displayPos] = originalIdx
+  });
   showPage('play');
   renderQuestion();
 }
@@ -1272,6 +1302,9 @@ function renderQuestion() {
   document.getElementById('timer-display').style.color = 'var(--accent1)';
   document.getElementById('timer-display').style.borderColor = 'var(--accent1)';
 
+  // Record when the question started (for speed bonus)
+  questionStartTime = Date.now();
+
   if (timeLimit > 0) {
     timerInterval = setInterval(() => {
       timeLeft--;
@@ -1287,12 +1320,13 @@ function renderQuestion() {
     }, 1000);
   }
 
-  // Answers
+  // Answers — rendered in shuffled order
+  const order = shuffledOptions[currentQ] || q.options.map((_, i) => i);
   const grid = document.getElementById('answers-grid');
-  grid.innerHTML = q.options.map((opt, i) => `
-    <button class="answer-btn" onclick="selectAnswer(${i})">
-      <div class="option-letter ${optClasses[i]}">${optLetters[i]}</div>
-      ${opt}
+  grid.innerHTML = order.map((origIdx, displayPos) => `
+    <button class="answer-btn" onclick="selectAnswer(${origIdx})" data-orig="${origIdx}">
+      <div class="option-letter ${optClasses[displayPos]}">${optLetters[displayPos]}</div>
+      ${escHtml(q.options[origIdx])}
     </button>
   `).join('');
 
@@ -1310,42 +1344,78 @@ function selectAnswer(idx) {
 function revealAnswer(chosen) {
   if (gameAnswers[currentQ] !== null) return;
   gameAnswers[currentQ] = chosen;
-  
+
   const q = activeQuiz.questions[currentQ];
-  // Bug #2 fix: support both number and array format for q.correct
   const correctArr = Array.isArray(q.correct) ? q.correct : [q.correct];
+  const timeLimit = parseInt(activeQuiz.timePerQ) || 0;
+
+  // --- Speed bonus calculation ---
+  let speedBonus = 0;
+  if (correctArr.includes(chosen) && timeLimit > 0) {
+    const elapsed = (Date.now() - questionStartTime) / 1000; // seconds
+    const ratio = Math.max(0, 1 - elapsed / timeLimit);      // 1 = instant, 0 = at the limit
+    speedBonus = Math.ceil(ratio * 3);                        // 0–3 bonus points
+    playerSpeedBonus += speedBonus;
+  }
+
+  // --- Style each button ---
   const btns = document.querySelectorAll('.answer-btn');
-  btns.forEach((btn, i) => {
+  btns.forEach(btn => {
     btn.disabled = true;
-    if (correctArr.includes(i)) btn.classList.add('correct');
-    else if (i === chosen && !correctArr.includes(chosen)) btn.classList.add('wrong');
+    const origIdx = parseInt(btn.dataset.orig);
+    if (correctArr.includes(origIdx)) {
+      btn.classList.add('correct');
+    } else if (origIdx === chosen) {
+      // This is the specific wrong option the player clicked
+      btn.classList.add('chosen-wrong');
+    } else {
+      // Other wrong options — muted, less emphasis
+      btn.classList.add('wrong');
+    }
   });
+
   if (correctArr.includes(chosen)) {
     playerScore++;
-    toast('✅ ¡Correcto! +1 punto');
+    const bonusMsg = speedBonus > 0
+      ? `<span class="speed-badge">⚡ +${speedBonus} velocidad</span>`
+      : '';
+    const noteEl2 = document.getElementById('answer-note');
+    // We'll append bonus to toast and also show inline
+    toast(`✅ ¡Correcto! +1 punto${speedBonus > 0 ? ` ⚡+${speedBonus}` : ''}`);
+    if (speedBonus > 0 && noteEl2) {
+      // Prepend speed badge before the note (or show it alone)
+      noteEl2.dataset.speedHtml = bonusMsg;
+    }
   } else if (chosen === -1) {
     toast('⏰ ¡Tiempo agotado!');
   } else {
-    toast('❌ Incorrecto');
+    toast('❌ Incorrecto — la respuesta correcta está en verde');
   }
 
-  // Show question note if present
+  // Show question note + optional speed badge
   const noteEl = document.getElementById('answer-note');
-  if (noteEl && q.nota && q.nota.trim()) {
-    noteEl.innerHTML = `<span class="note-icon">📝</span>${escHtml(q.nota.trim())}`;
-    noteEl.classList.add('visible');
+  if (noteEl) {
+    const speedHtml = noteEl.dataset.speedHtml || '';
+    noteEl.dataset.speedHtml = '';
+    const noteText = q.nota && q.nota.trim()
+      ? `<span class="note-icon">📝</span>${escHtml(q.nota.trim())}`
+      : '';
+    if (speedHtml || noteText) {
+      noteEl.innerHTML = [speedHtml, noteText].filter(Boolean).join('<br style="margin:.4em 0"/>');
+      noteEl.classList.add('visible');
+    }
   }
 
   document.getElementById('next-btn').style.display = 'inline-flex';
-  
+
   // Auto-advance
   clearTimeout(window.autoNextTimeout);
   window.autoNextTimeout = setTimeout(() => {
-    if (document.getElementById('page-play').classList.contains('active') && 
+    if (document.getElementById('page-play').classList.contains('active') &&
         document.getElementById('next-btn').style.display !== 'none') {
       nextQuestion();
     }
-  }, (q.nota && q.nota.trim()) ? 4000 : 2000);
+  }, (q.nota && q.nota.trim()) ? 4500 : speedBonus > 0 ? 2500 : 2000);
 }
 
 function nextQuestion() {
@@ -1362,6 +1432,7 @@ function nextQuestion() {
 function showResults() {
   clearInterval(timerInterval);
   const total = activeQuiz.questions.length;
+  const totalScore = playerScore + playerSpeedBonus;
 
   // Update stats
   stats.games++;
@@ -1369,31 +1440,53 @@ function showResults() {
   stats.totalQ += total;
   localStorage.setItem('qm_stats', JSON.stringify(stats));
 
-  // Simulate scores for fake players
+  // Simulate scores for fake players (base + random speed bonus)
   gamePlayers.forEach(p => {
-    if (p.name === playerName) p.score = playerScore;
-    else p.score = Math.floor(Math.random() * (total + 1));
+    if (p.name === playerName) {
+      p.score = playerScore;
+      p.speedBonus = playerSpeedBonus;
+    } else {
+      p.score = Math.floor(Math.random() * (total + 1));
+      p.speedBonus = Math.floor(Math.random() * (p.score * 2 + 1));
+    }
+    p.total = p.score + p.speedBonus;
   });
-  gamePlayers.sort((a, b) => b.score - a.score);
+  gamePlayers.sort((a, b) => b.total - a.total);
 
-  document.getElementById('my-score').textContent = playerScore;
-  document.getElementById('my-score-of').textContent = `de ${total}`;
+  document.getElementById('my-score').textContent = totalScore;
+  document.getElementById('my-score-of').textContent = `de ${total} + ⚡${playerSpeedBonus}`;
   const pct = Math.round((playerScore/total)*100);
   document.getElementById('score-msg').textContent =
     pct >= 80 ? '¡Excelente resultado! 🎉' :
     pct >= 60 ? '¡Muy bien! Seguí así 💪' :
     pct >= 40 ? 'Buen intento, podés mejorar 📚' : '¡A estudiar más! 📖';
 
+  // Speed detail under score circle
+  let speedDetail = document.getElementById('speed-score-detail');
+  if (!speedDetail) {
+    speedDetail = document.createElement('div');
+    speedDetail.id = 'speed-score-detail';
+    speedDetail.className = 'speed-score-detail';
+    document.getElementById('my-score-circle').after(speedDetail);
+  }
+  speedDetail.innerHTML = `
+    <span>✅ Correctas: <strong>${playerScore}/${total}</strong></span>
+    <span>⚡ Bonus velocidad: <strong>+${playerSpeedBonus}</strong></span>
+    <span>🏆 Total: <strong>${totalScore}</strong></span>
+  `;
+
   // Leaderboard
   const ranks = ['🥇','🥈','🥉'];
   const rankClass = ['gold','silver','bronze'];
-  // Bug #12 fix: guard against NaN when total is 0
   document.getElementById('leaderboard').innerHTML = gamePlayers.map((p, i) => `
     <div class="lb-row" id="lb-row-${i}">
       <div class="lb-rank ${rankClass[i] || ''}">${ranks[i] || (i+1)}</div>
-      <div class="lb-name">${escHtml(p.name)} ${p.name === playerName ? '<span class="badge badge-purple">Tú</span>':''}</div>
+      <div class="lb-name">
+        ${escHtml(p.name)} ${p.name === playerName ? '<span class="badge badge-purple">Tú</span>':''}
+        ${p.speedBonus > 0 ? `<span style="font-size:.72rem;color:var(--accent5);font-weight:600">⚡+${p.speedBonus}</span>` : ''}
+      </div>
       <div class="lb-bar"><div class="lb-bar-fill" style="width:${total > 0 ? Math.round((p.score/total)*100) : 0}%"></div></div>
-      <div class="lb-score">${p.score}/${total}</div>
+      <div class="lb-score">${p.total}</div>
       <div class="lb-actions">
         <button class="lb-btn-view" onclick="viewAnswers(${i})" title="Ver respuestas">🔍 Ver respuestas</button>
         <button class="lb-btn-del" onclick="promptDeleteParticipation(${i})" title="Eliminar participación">🗑</button>
@@ -1407,12 +1500,11 @@ function showResults() {
 
 function replayCurrentQuiz() {
   if (!activeQuiz) { showPage('home'); return; }
-  playerScore = 0;
-  currentQ = 0;
-  gameAnswers = new Array(activeQuiz.questions.length).fill(null);
-  gamePlayers = gamePlayers.map(p => ({...p, score: 0}));
-  showPage('play');
-  renderQuestion();
+  // Remove old speed detail element so it doesn't duplicate
+  const sd = document.getElementById('speed-score-detail');
+  if (sd) sd.remove();
+  gamePlayers = gamePlayers.map(p => ({...p, score: 0, speedBonus: 0, total: 0}));
+  startActualGame(); // re-shuffles options too
 }
 
 // ---- DELETE PARTICIPATION ----

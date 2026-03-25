@@ -591,10 +591,14 @@ function renderPlay() {
         <div class="answers-grid">
           ${q.options.map((opt, i) => {
             const isSelected = currentAnswers.includes(i);
-            const isActuallyCorrect = q.correct.includes(i);
+            const isActuallyCorrect = Array.isArray(q.correct) ? q.correct.includes(i) : q.correct === i;
             let feedbackClass = '';
-            if (isSelected) {
+            if (state.showingFeedback) {
+              // Show all results: green = correct, red = wrong
               feedbackClass = isActuallyCorrect ? 'correct' : 'wrong';
+            } else if (isSelected) {
+              // Before submitting: highlight selected
+              feedbackClass = 'selected';
             }
             return `
               <button class="answer-btn ${feedbackClass}" 
