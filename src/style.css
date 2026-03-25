@@ -710,3 +710,62 @@ nav {
 .role-icon { font-size: 4rem; margin-bottom: 20px; }
 .role-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.5rem; font-weight: 800; margin-bottom: 12px; letter-spacing: -0.02em; }
 .role-desc { color: var(--muted); margin-bottom: 24px; }
+/* Question note (creator) */
+.note-field-wrap {
+  margin-top: 14px;
+  border-top: 2px dashed var(--border);
+  padding-top: 16px;
+  animation: slideIn 0.3s ease-out;
+}
+.note-field-label {
+  display: flex; align-items: center; gap: 8px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: .85rem; font-weight: 700; color: var(--muted);
+  margin-bottom: 8px;
+}
+.note-field-label span { font-size: .75rem; background: #fff8e0; color: #c98a00; border-radius: 8px; padding: 2px 8px; }
+.form-textarea {
+  width: 100%; padding: 12px 16px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: 'Inter', sans-serif;
+  font-size: .95rem;
+  background: var(--white);
+  color: var(--text);
+  outline: none;
+  resize: vertical;
+  min-height: 80px;
+  line-height: 1.5;
+}
+.form-textarea:focus { border-color: var(--accent1); }
+
+/* Post-answer note panel (play screen) */
+.answer-note {
+  margin-top: 20px;
+  background: #fff8e0;
+  border: 1.5px solid #ffe484;
+  border-radius: var(--radius-sm);
+  padding: 16px 20px;
+  font-size: .95rem;
+  color: #7a5a00;
+  line-height: 1.6;
+  animation: popIn 0.4s cubic-bezier(.34,1.56,.64,1);
+  display: flex; align-items: flex-start; gap: 12px;
+}
+.answer-note .note-icon {
+  font-size: 1.2rem;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.btn-del {
+  background: none; border: none;
+  cursor: pointer; font-size: 1.15rem;
+  padding: 6px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: #ff6b6b; opacity: 0.6;
+}
+.btn-del:hover { opacity: 1; background: #fff0f0; }

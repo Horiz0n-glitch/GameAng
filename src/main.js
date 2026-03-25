@@ -300,7 +300,21 @@ function renderCreator() {
                   </div>
                 `).join('')}
               </div>
-              <button class="add-option-btn" onclick="window.actions.addOpt(${qi})">＋ Agregar opción</button>
+              <div style="display:flex; gap:10px; margin-top:15px">
+                <button class="add-option-btn" style="flex:1; margin-top:0" onclick="window.actions.addOpt(${qi})">＋ Agregar opción</button>
+                <button class="add-option-btn" style="flex:1; margin-top:0; border-style:dotted" onclick="window.actions.toggleNoteField(${qi})">
+                  ${q.note || q.showNoteField ? '✕ Ocultar nota' : '📝 Agregar nota'}
+                </button>
+              </div>
+
+              ${(q.note || q.showNoteField) ? `
+                <div class="note-field-wrap">
+                  <div class="note-field-label">
+                    <span>💡 Nota explicativa</span> Solo aparece cuando el alumno responde.
+                  </div>
+                  <textarea class="form-textarea" placeholder="Ej: Esta respuesta es correcta porque..." oninput="window.actions.updateQNote(${qi}, this.value)">${q.note || ''}</textarea>
+                </div>
+              ` : ''}
             </div>
           `).join('')}
         </div>
@@ -359,9 +373,10 @@ function renderLobby() {
         </div>
         <div class="players-list">
           ${state.players.map(p => `
-            <div class="player-chip">
+            <div class="player-chip" style="position:relative">
               <div class="player-dot"></div>
               ${p.name}
+              ${isProfe ? `<button onclick="window.actions.deletePlayer('${p.name}')" title="Eliminar" style="background:none; border:none; margin-left:6px; color:#ff6b6b; cursor:pointer; font-size:1rem; display:flex; align-items:center; justify-content:center; padding:0">✕</button>` : ''}
             </div>
           `).join('')}
         </div>
@@ -407,7 +422,10 @@ function renderPlay() {
           ${state.players.sort((a,b) => b.score - a.score).map((p, i) => `
             <div class="lb-row" style="cursor:pointer" onclick="window.actions.viewPlayerDetail('${p.name}')">
               <div class="lb-rank">${i+1}</div>
-              <div class="lb-name">${p.name} <span style="font-size:0.7rem; color:var(--accent1); margin-left:5px">🔍 Ver respuestas</span></div>
+              <div class="lb-name" style="display:flex; align-items:center; gap:8px">
+                <button class="btn-del" onclick="event.stopPropagation(); window.actions.deletePlayer('${p.name}')" title="Eliminar información">🗑</button>
+                <span>${p.name} <span style="font-size:0.75rem; color:var(--accent1); margin-left:5px">🔍 Ver respuestas</span></span>
+              </div>
               <div style="width:100px; text-align:center">
                 <span class="badge ${p.finished ? 'badge-purple' : 'badge-green'}">
                   ${p.finished ? 'Terminado' : `Q${(p.qProgress || 0) + 1}`}
@@ -501,6 +519,16 @@ function renderPlay() {
                   `;
                 }).join('')}
               </div>
+              
+              ${q.note ? `
+                <div class="answer-note" style="margin-top:20px; box-shadow:none">
+                  <span class="note-icon">📝</span>
+                  <div style="text-align:left">
+                    <div style="font-weight:700; font-size:0.75rem; text-transform:uppercase; color:var(--accent5); margin-bottom:4px">Nota post-respuesta:</div>
+                    ${q.note}
+                  </div>
+                </div>
+              ` : ''}
             </div>
           `).join('')}
         </div>
@@ -578,8 +606,15 @@ function renderPlay() {
           }).join('')}
         </div>
         <div style="margin-top:24px; text-align:center">
+          ${state.showingFeedback && q.note ? `
+            <div class="answer-note">
+              <span class="note-icon">📝</span>
+              <div style="text-align:left">${q.note}</div>
+            </div>
+          ` : ''}
+
           ${state.showingFeedback ? `
-            <button class="game-btn" onclick="window.actions.proceedToNext()" style="width:100%">
+            <button class="game-btn" onclick="window.actions.proceedToNext()" style="width:100%; margin-top:20px">
               ${qIndex === total - 1 ? 'Ver Resultados Finales →' : 'Siguiente Pregunta →'}
             </button>
           ` : `
@@ -611,8 +646,9 @@ function renderResults() {
           ${sorted.map((p, i) => `
             <div class="lb-row">
               <div class="lb-rank ${i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : ''}">${i < 3 ? ['🥇','🥈','🥉'][i] : i+1}</div>
-              <div class="lb-name">
-                ${p.name} ${state.playerName && p.name === state.playerName ? '<span class="badge badge-purple">Tú</span>' : ''}
+              <div class="lb-name" style="display:flex; align-items:center; gap:8px">
+                ${state.role === 'profe' ? `<button class="btn-del" onclick="window.actions.deletePlayer('${p.name}')" title="Eliminar información">🗑</button>` : ''}
+                <span>${p.name} ${state.playerName && p.name === state.playerName ? '<span class="badge badge-purple">Tú</span>' : ''}</span>
               </div>
               <div class="lb-bar"><div class="lb-bar-fill" style="width:${total > 0 ? Math.round(((p.score||0)/total)*100) : 0}%"></div></div>
               <div class="lb-score">${p.score || 0}/${total}</div>
@@ -749,7 +785,7 @@ window.actions = {
   },
 
   addQuestion: () => {
-    state.activeQuiz.questions.push({ text: '', options: ['', '', '', ''], correct: [0] });
+    state.activeQuiz.questions.push({ text: '', options: ['', '', '', ''], correct: [0], note: '', showNoteField: false });
     render();
   },
 
@@ -794,6 +830,16 @@ window.actions = {
     } else {
       state.activeQuiz.questions[qi].correct.push(oi);
     }
+    render();
+  },
+
+  updateQNote: (qi, val) => {
+    state.activeQuiz.questions[qi].note = val;
+  },
+
+  toggleNoteField: (qi) => {
+    const q = state.activeQuiz.questions[qi];
+    q.showNoteField = !q.showNoteField;
     render();
   },
 
@@ -1088,6 +1134,23 @@ window.actions = {
 
   copyLink: (url) => {
     navigator.clipboard.writeText(url).then(() => showToast('📋 Enlace copiado al portapapeles!', 'success'));
+  },
+
+  deletePlayer: async (name) => {
+    const ok = await showConfirm(`¿Eliminar la información de "${name}"?`, {
+      confirmText: '🗑 Eliminar',
+      cancelText: 'Cancelar',
+      type: 'danger'
+    });
+    if (ok) {
+      try {
+        await deleteDoc(doc(db, 'sessions', state.session.id, 'players', name));
+        showToast(`Jugador "${name}" eliminado`, 'info');
+      } catch (e) {
+        console.error(e);
+        await showAlert('Error al eliminar el jugador.', 'error');
+      }
+    }
   }
 };
 
