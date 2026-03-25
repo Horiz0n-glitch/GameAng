@@ -548,6 +548,85 @@
   }
   .toast.show { transform: translateX(-50%) translateY(0); }
 
+  /* LB actions */
+  .lb-actions { display: flex; gap: 6px; align-items: center; }
+  .lb-btn-view {
+    background: #ece9ff; color: var(--accent1);
+    border: none; border-radius: 20px;
+    padding: 4px 12px; font-size: 0.75rem; font-weight: 600;
+    cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
+    transition: background .2s;
+  }
+  .lb-btn-view:hover { background: #d8d3ff; }
+  .lb-btn-del {
+    background: #fff0f0; color: var(--accent3);
+    border: none; border-radius: 20px;
+    padding: 4px 10px; font-size: 0.75rem; font-weight: 600;
+    cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
+    transition: background .2s;
+  }
+  .lb-btn-del:hover { background: #ffd6d6; }
+
+  /* Answers detail modal */
+  .answers-detail { display: flex; flex-direction: column; gap: 12px; max-height: 55vh; overflow-y: auto; padding-right: 4px; }
+  .ans-row {
+    background: var(--bg);
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    font-size: 0.88rem;
+  }
+  .ans-row .ans-q { font-weight: 600; margin-bottom: 6px; }
+  .ans-row .ans-given { display: flex; align-items: center; gap: 8px; }
+  .ans-correct { color: #1a9e75; font-weight: 600; }
+  .ans-wrong { color: var(--accent3); font-weight: 600; }
+  .ans-timeout { color: var(--muted); font-weight: 600; }
+
+  /* Question note (creator) */
+  .note-field-wrap {
+    margin-top: 14px;
+    border-top: 1px dashed var(--border);
+    padding-top: 12px;
+  }
+  .note-field-label {
+    display: flex; align-items: center; gap: 6px;
+    font-size: .8rem; font-weight: 600; color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .note-field-label span { font-size: .72rem; background: #fff8e0; color: #c98a00; border-radius: 8px; padding: 1px 7px; }
+  .form-textarea {
+    width: 100%; padding: 10px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif;
+    font-size: .88rem;
+    background: var(--white);
+    color: var(--text);
+    outline: none;
+    resize: vertical;
+    min-height: 72px;
+    line-height: 1.5;
+  }
+  .form-textarea:focus { border-color: var(--accent2); }
+
+  /* Post-answer note panel (play screen) */
+  .answer-note {
+    display: none;
+    margin-top: 18px;
+    background: #fff8e0;
+    border: 1.5px solid #ffe484;
+    border-radius: var(--radius-sm);
+    padding: 14px 18px;
+    font-size: .92rem;
+    color: #7a5a00;
+    line-height: 1.55;
+    animation: slideUp .3s ease;
+  }
+  .answer-note .note-icon {
+    font-size: 1rem;
+    margin-right: 6px;
+  }
+  .answer-note.visible { display: block; }
+
   @media (max-width: 768px) {
     .creator-layout { grid-template-columns: 1fr; }
     .stats-grid { grid-template-columns: 1fr; }
@@ -722,6 +801,7 @@
     </div>
     <div class="q-text" id="q-text">Cargando...</div>
     <div class="answers-grid" id="answers-grid"></div>
+    <div class="answer-note" id="answer-note"></div>
     <div style="margin-top:20px;text-align:center" id="next-btn-wrap">
       <button class="btn btn-primary" onclick="nextQuestion()" id="next-btn" style="display:none;margin:0 auto">Siguiente →</button>
     </div>
@@ -749,7 +829,7 @@
   </div>
 </div>
 
-<!-- MODAL DELETE -->
+<!-- MODAL DELETE QUIZ -->
 <div class="modal-overlay" id="modal-delete">
   <div class="modal">
     <h3>¿Eliminar quiz?</h3>
@@ -757,6 +837,29 @@
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal('modal-delete')">Cancelar</button>
       <button class="btn btn-danger" onclick="confirmDelete()">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DELETE PARTICIPATION -->
+<div class="modal-overlay" id="modal-del-participation">
+  <div class="modal">
+    <h3>¿Eliminar participación?</h3>
+    <p style="color:var(--muted)">Se eliminará a <strong id="del-player-name"></strong> del ranking de esta partida. Esta acción no se puede deshacer.</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-del-participation')">Cancelar</button>
+      <button class="btn btn-danger" onclick="confirmDeleteParticipation()">🗑 Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL VIEW ANSWERS -->
+<div class="modal-overlay" id="modal-view-answers">
+  <div class="modal" style="max-width:560px">
+    <h3 id="answers-modal-title">Respuestas de jugador</h3>
+    <div class="answers-detail" id="answers-detail"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-view-answers')">Cerrar</button>
     </div>
   </div>
 </div>
@@ -1014,6 +1117,11 @@ function renderQuestions() {
         `).join('')}
       </div>
       ${q.options.length < 6 ? `<button class="add-option-btn" onclick="addOption(${qi})">＋ Agregar opción</button>` : ''}
+      <div class="note-field-wrap">
+        <div class="note-field-label">📝 Nota post-respuesta <span>Opcional</span></div>
+        <textarea class="form-textarea" placeholder="Ej: Esta respuesta es correcta porque...  Aparece luego de que el alumno responde."
+          oninput="syncQuestion(${qi},'nota',this.value)">${escHtml(q.nota||'')}</textarea>
+      </div>
     </div>
   `).join('');
 }
@@ -1186,6 +1294,10 @@ function renderQuestion() {
       ${opt}
     </button>
   `).join('');
+
+  // Hide previous note
+  const noteEl = document.getElementById('answer-note');
+  if (noteEl) { noteEl.textContent = ''; noteEl.classList.remove('visible'); }
 }
 
 function selectAnswer(idx) {
@@ -1215,6 +1327,14 @@ function revealAnswer(chosen) {
   } else {
     toast('❌ Incorrecto');
   }
+
+  // Show question note if present
+  const noteEl = document.getElementById('answer-note');
+  if (noteEl && q.nota && q.nota.trim()) {
+    noteEl.innerHTML = `<span class="note-icon">📝</span>${escHtml(q.nota.trim())}`;
+    noteEl.classList.add('visible');
+  }
+
   document.getElementById('next-btn').style.display = 'inline-flex';
 }
 
@@ -1258,11 +1378,15 @@ function showResults() {
   const rankClass = ['gold','silver','bronze'];
   // Bug #12 fix: guard against NaN when total is 0
   document.getElementById('leaderboard').innerHTML = gamePlayers.map((p, i) => `
-    <div class="lb-row">
+    <div class="lb-row" id="lb-row-${i}">
       <div class="lb-rank ${rankClass[i] || ''}">${ranks[i] || (i+1)}</div>
       <div class="lb-name">${escHtml(p.name)} ${p.name === playerName ? '<span class="badge badge-purple">Tú</span>':''}</div>
       <div class="lb-bar"><div class="lb-bar-fill" style="width:${total > 0 ? Math.round((p.score/total)*100) : 0}%"></div></div>
       <div class="lb-score">${p.score}/${total}</div>
+      <div class="lb-actions">
+        <button class="lb-btn-view" onclick="viewAnswers(${i})" title="Ver respuestas">🔍 Ver respuestas</button>
+        <button class="lb-btn-del" onclick="promptDeleteParticipation(${i})" title="Eliminar participación">🗑</button>
+      </div>
     </div>
   `).join('');
 
@@ -1278,6 +1402,80 @@ function replayCurrentQuiz() {
   gamePlayers = gamePlayers.map(p => ({...p, score: 0}));
   showPage('play');
   renderQuestion();
+}
+
+// ---- DELETE PARTICIPATION ----
+let deleteParticipationIdx = null;
+
+function promptDeleteParticipation(idx) {
+  deleteParticipationIdx = idx;
+  document.getElementById('del-player-name').textContent = gamePlayers[idx].name;
+  document.getElementById('modal-del-participation').classList.add('open');
+}
+
+function confirmDeleteParticipation() {
+  if (deleteParticipationIdx === null) return;
+  const removed = gamePlayers.splice(deleteParticipationIdx, 1)[0];
+  closeModal('modal-del-participation');
+
+  // Re-render leaderboard inline without recalculating scores
+  const total = activeQuiz.questions.length;
+  const ranks = ['🥇','🥈','🥉'];
+  const rankClass = ['gold','silver','bronze'];
+  document.getElementById('leaderboard').innerHTML = gamePlayers.map((p, i) => `
+    <div class="lb-row" id="lb-row-${i}">
+      <div class="lb-rank ${rankClass[i] || ''}">${ranks[i] || (i+1)}</div>
+      <div class="lb-name">${escHtml(p.name)} ${p.name === playerName ? '<span class="badge badge-purple">Tú</span>':''}</div>
+      <div class="lb-bar"><div class="lb-bar-fill" style="width:${total > 0 ? Math.round((p.score/total)*100) : 0}%"></div></div>
+      <div class="lb-score">${p.score}/${total}</div>
+      <div class="lb-actions">
+        <button class="lb-btn-view" onclick="viewAnswers(${i})" title="Ver respuestas">🔍 Ver respuestas</button>
+        <button class="lb-btn-del" onclick="promptDeleteParticipation(${i})" title="Eliminar participación">🗑</button>
+      </div>
+    </div>
+  `).join('');
+
+  toast(`🗑 Participación de "${removed.name}" eliminada`);
+  deleteParticipationIdx = null;
+}
+
+// ---- VIEW ANSWERS ----
+function viewAnswers(playerIdx) {
+  const p = gamePlayers[playerIdx];
+  const total = activeQuiz.questions.length;
+  document.getElementById('answers-modal-title').textContent = `Respuestas de ${p.name}`;
+
+  // For the current player we have real gameAnswers; for others answers are simulated
+  const isMe = p.name === playerName;
+  const answers = isMe ? gameAnswers : activeQuiz.questions.map((q, i) => {
+    // Simulate: randomly assign correct or wrong based on their score
+    const correctArr = Array.isArray(q.correct) ? q.correct : [q.correct];
+    if (i < p.score) return correctArr[0]; // answered correctly
+    return (correctArr[0] + 1) % q.options.length; // answered wrong
+  });
+
+  document.getElementById('answers-detail').innerHTML = activeQuiz.questions.map((q, i) => {
+    const chosen = answers[i];
+    const correctArr = Array.isArray(q.correct) ? q.correct : [q.correct];
+    const isCorrect = correctArr.includes(chosen);
+    const isTimeout = chosen === -1 || chosen === null;
+    let statusClass = isTimeout ? 'ans-timeout' : isCorrect ? 'ans-correct' : 'ans-wrong';
+    let statusIcon = isTimeout ? '⏰ Sin respuesta' : isCorrect ? '✅ Correcto' : '❌ Incorrecto';
+    const chosenText = isTimeout ? '—' : escHtml(q.options[chosen] || '—');
+    const correctText = escHtml(q.options[correctArr[0]]);
+    return `
+      <div class="ans-row">
+        <div class="ans-q">P${i+1}: ${escHtml(q.text)}</div>
+        <div class="ans-given">
+          <span class="${statusClass}">${statusIcon}</span>
+          <span style="color:var(--muted);font-size:.82rem">Respondió: <strong>${chosenText}</strong></span>
+          ${!isCorrect && !isTimeout ? `<span style="color:var(--muted);font-size:.82rem"> · Correcta: <strong style="color:#1a9e75">${correctText}</strong></span>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  document.getElementById('modal-view-answers').classList.add('open');
 }
 
 // ---- INIT ----
