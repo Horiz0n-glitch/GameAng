@@ -751,6 +751,7 @@ nav {
   line-height: 1.6;
   animation: popIn 0.4s cubic-bezier(.34,1.56,.64,1);
   display: flex; align-items: flex-start; gap: 12px;
+  white-space: pre-wrap;
 }
 .answer-note .note-icon {
   font-size: 1.2rem;

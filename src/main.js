@@ -106,7 +106,8 @@ let state = {
   timerInterval: null,
   defaultBg: '/bg-default.png',
   user: null,
-  showingFeedback: false
+  showingFeedback: false,
+  autoNextTimeout: null
 };
 
 // --- ROUTER ---
@@ -1062,10 +1063,9 @@ window.actions = {
 
     // Update progress state
     const answeredQIndex = state.localQIndex;
-    state.localQIndex++;
-    const isFinished = state.localQIndex >= total;
+    const isFinished = (answeredQIndex + 1) >= total;
 
-    // Show feedback locally first
+    // Show feedback locally
     state.showingFeedback = true;
     render();
 
@@ -1078,13 +1078,32 @@ window.actions = {
       },
       currentAnswer: [], 
       score: newScore,
-      qProgress: state.localQIndex, 
-      finished: isFinished
+      // qProgress remains at current index until proceedToNext
     });
+    
+    // If it was the last question, we can mark as finished in DB now
+    if (isFinished) {
+      await updateDoc(playerRef, { finished: true });
+    }
+
+    // Auto-advance after a delay (4s if has note, 2s if not)
+    clearTimeout(state.autoNextTimeout);
+    state.autoNextTimeout = setTimeout(() => {
+      if (state.currentPage === 'play' && state.showingFeedback) {
+        window.actions.proceedToNext();
+      }
+    }, q.note ? 4000 : 2000);
   },
 
-  proceedToNext: () => {
+  proceedToNext: async () => {
+    clearTimeout(state.autoNextTimeout);
+    state.localQIndex++;
     state.showingFeedback = false;
+    
+    // Sync progress to DB when moving to next question or finishing
+    const playerRef = doc(db, 'sessions', state.session.id, 'players', state.playerName);
+    await updateDoc(playerRef, { qProgress: state.localQIndex });
+    
     const isFinished = state.localQIndex >= state.activeQuiz.questions.length;
     if (!isFinished) {
       window.actions.startTimer();

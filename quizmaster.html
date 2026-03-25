@@ -620,6 +620,7 @@
     color: #7a5a00;
     line-height: 1.55;
     animation: slideUp .3s ease;
+    white-space: pre-wrap;
   }
   .answer-note .note-icon {
     font-size: 1rem;
@@ -1336,9 +1337,19 @@ function revealAnswer(chosen) {
   }
 
   document.getElementById('next-btn').style.display = 'inline-flex';
+  
+  // Auto-advance
+  clearTimeout(window.autoNextTimeout);
+  window.autoNextTimeout = setTimeout(() => {
+    if (document.getElementById('page-play').classList.contains('active') && 
+        document.getElementById('next-btn').style.display !== 'none') {
+      nextQuestion();
+    }
+  }, (q.nota && q.nota.trim()) ? 4000 : 2000);
 }
 
 function nextQuestion() {
+  clearTimeout(window.autoNextTimeout);
   currentQ++;
   if (currentQ >= activeQuiz.questions.length) {
     showResults();
