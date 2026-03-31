@@ -167,6 +167,16 @@ function render() {
     default:
       content.innerHTML = '<h1>404 Not Found</h1>';
   }
+
+  if (state.activeQuiz?.type === 'wordcloud' && state.currentPage === 'play') {
+    cancelAnimationFrame(window._cloudRaf);
+    window._cloudRaf = requestAnimationFrame(() => {
+      document.fonts.ready.then(() => {
+        window.wordCloudManager.init();
+        window.wordCloudManager.processPlayers(state.players || []);
+      });
+    });
+  }
 }
 
 // --- VIEWS ---
@@ -204,9 +214,10 @@ function renderHome() {
           <p style="color:var(--muted);font-size:.9rem;margin-bottom:4px">Panel del Profe 👋</p>
           <div class="home-greeting">Mis <span>Quizzes Online</span></div>
         </div>
-        <div style="display:flex; gap:10px">
-          <button class="btn btn-secondary" onclick="window.actions.newTFQuiz()">✅ Verdadero o Falso</button>
-          <button class="btn btn-primary" onclick="window.actions.newQuiz()">＋ Nuevo Quiz</button>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button onclick="window.actions.newWordCloud()" class="btn btn-secondary">☁️ Nube de Palabras</button>
+          <button onclick="window.actions.newTFQuiz()" class="btn btn-secondary">✅ Verdadero o Falso</button>
+          <button onclick="window.actions.newQuiz()" class="btn btn-primary">＋ Nuevo Quiz</button>
         </div>
       </div>
       <div class="stats-grid">
@@ -292,6 +303,7 @@ function renderCreator() {
                 <button class="btn btn-danger" onclick="window.actions.removeQuestion(${qi})" style="padding:4px 10px;font-size:.75rem">✕</button>
               </div>
               <input class="form-input" placeholder="Pregunta..." value="${q.text || ''}" oninput="window.actions.updateQ(${qi}, 'text', this.value)" />
+              ${state.activeQuiz?.type !== 'wordcloud' ? `
               <div class="options-grid">
                 ${q.options.map((opt, oi) => `
                   <div class="option-row">
@@ -307,6 +319,7 @@ function renderCreator() {
                   ${q.note || q.showNoteField ? '✕ Ocultar nota' : '📝 Agregar nota'}
                 </button>
               </div>
+              ` : ''}
 
               ${(q.note || q.showNoteField) ? `
                 <div class="note-field-wrap">
@@ -400,6 +413,14 @@ function renderPlay() {
     // Profe sees real-time overview
     return `
       <div class="page active">
+        ${state.activeQuiz.type === 'wordcloud' ? `
+          <div id="cloud-container" style="width:100%; height:550px; position:relative; border-radius:12px; border:2px solid var(--border); overflow:hidden; background:white; margin-bottom:20px; box-shadow:var(--shadow)">
+             <div id="cloud-canvas" style="width:100%; height:100%; position:absolute; inset:0;"></div>
+          </div>
+          <p style="text-align:center; color:var(--muted); font-size:0.9rem; margin-bottom:24px">
+            ☁️ Las palabras de los alumnos crecen en vivo en la parte superior.
+          </p>
+        ` : ''}
         <div class="home-header">
           <div>
             <div class="home-greeting">Monitoreo: <span style="font-size:1.5rem">${state.session.code}</span></div>
@@ -412,7 +433,14 @@ function renderPlay() {
           </div>
         </div>
         
-        <div class="section-title">Progreso de la clase</div>
+        <div class="section-title">${state.activeQuiz.type === 'wordcloud' ? 'Resumen de Participación' : 'Progreso de la clase'}</div>
+        ${state.activeQuiz.type === 'wordcloud' ? `
+          <div style="background:var(--white); border-radius:var(--radius); padding:25px; border:1px solid var(--border); box-shadow:var(--shadow); text-align:center">
+             <div style="font-size:2rem; margin-bottom:10px">👥</div>
+             <div style="font-weight:700; color:var(--muted)">${state.players.length} Alumnos conectados</div>
+             <p style="font-size:0.85rem; color:var(--muted); margin:5px 0 0">Las palabras se agregan automáticamente a la nube superior.</p>
+          </div>
+        ` : `
         <div class="leaderboard">
           <div class="lb-header" style="display:flex; padding:10px; font-size:0.8rem; color:var(--muted); font-weight:700">
             <div style="width:40px">#</div>
@@ -438,6 +466,7 @@ function renderPlay() {
             </div>
           `).join('')}
         </div>
+        `}
 
         ${state.selectedPlayerDetail ? (() => {
           const p = state.players.find(pl => pl.name === state.selectedPlayerDetail);
@@ -487,6 +516,7 @@ function renderPlay() {
 
   // Preview view for Teacher
   if (state.isPreview) {
+    const _previewLink = `${window.location.origin}${window.location.pathname}?session=${state.session?.code || ''}`;
     return `
       <div class="page active" style="padding:15px">
         <div style="background:var(--accent1); color:white; padding:15px 20px; border-radius:12px; margin-bottom:24px; display:flex; justify-content:space-between; align-items:center; box-shadow:var(--shadow)">
@@ -499,39 +529,89 @@ function renderPlay() {
           </div>
           <button class="btn" style="background:rgba(255,255,255,0.2); color:white; padding:8px 16px; font-size:0.85rem; border:none; cursor:pointer;" onclick="window.actions.backToMonitor()">Volver al Monitoreo</button>
         </div>
-        
-        <div class="play-screen" style="max-width:800px; margin:0 auto; padding-bottom:40px;">
-          ${state.activeQuiz.questions.map((q, qIndex) => `
-            <div style="background:var(--white); border-radius:var(--radius); padding:25px; margin-bottom:20px; box-shadow:var(--shadow); border:1px solid var(--border);">
-              <div class="q-header" style="margin-bottom:15px">
-                <span class="q-counter" style="font-weight:700; color:var(--muted)">Pregunta ${qIndex + 1} / ${state.activeQuiz.questions.length}</span>
-              </div>
-              <div class="q-text" style="font-size:1.2rem; font-weight:700; margin-bottom:20px">${q.text}</div>
-              <div class="answers-grid">
-                ${q.options.map((opt, i) => {
-                  const isCorrect = Array.isArray(q.correct) ? q.correct.includes(i) : q.correct === i;
-                  const btnStyle = isCorrect ? 'background:#e0fff5; border-color:var(--accent4); color:#1a9e75;' : 'background:var(--white); border-color:var(--border); color:var(--text); opacity:0.6;';
-                  return `
-                    <div style="padding:15px 20px; border-radius:var(--radius-sm); border:2px solid ${isCorrect ? 'var(--accent4)' : 'var(--border)'}; ${btnStyle} display:flex; align-items:center; gap:12px; font-weight:500;">
-                      <div class="option-letter ${['opt-a','opt-b','opt-c','opt-d','opt-e','opt-f','opt-g','opt-h'][i]}">${String.fromCharCode(65+i)}</div>
-                      ${opt || `Opción ${i+1}`}
-                      ${isCorrect ? '<span style="margin-left:auto; font-size:1.1rem">✅</span>' : ''}
-                    </div>
-                  `;
-                }).join('')}
-              </div>
-              
-              ${q.note ? `
-                <div class="answer-note" style="margin-top:20px; box-shadow:none">
-                  <span class="note-icon">📝</span>
-                  <div style="text-align:left">
-                    <div style="font-weight:700; font-size:0.75rem; text-transform:uppercase; color:var(--accent5); margin-bottom:4px">Nota post-respuesta:</div>
-                    ${q.note}
-                  </div>
+
+        <div style="display:flex; gap:20px; align-items:flex-start;">
+
+          <!-- Questions panel -->
+          <div style="flex:1; min-width:0; padding-bottom:40px;">
+            ${state.activeQuiz.questions.map((q, qIndex) => `
+              <div style="background:var(--white); border-radius:var(--radius); padding:25px; margin-bottom:20px; box-shadow:var(--shadow); border:1px solid var(--border);">
+                <div class="q-header" style="margin-bottom:15px">
+                  <span class="q-counter" style="font-weight:700; color:var(--muted)">Pregunta ${qIndex + 1} / ${state.activeQuiz.questions.length}</span>
                 </div>
-              ` : ''}
+                <div class="q-text" style="font-size:1.2rem; font-weight:700; ${state.activeQuiz.type === 'wordcloud' ? '' : 'margin-bottom:20px'}">${q.text}</div>
+                ${state.activeQuiz.type === 'wordcloud' ? '' : `
+                <div class="answers-grid">
+                  ${q.options.map((opt, i) => {
+                    const isCorrect = Array.isArray(q.correct) ? q.correct.includes(i) : q.correct === i;
+                    const btnStyle = isCorrect ? 'background:#e0fff5; border-color:var(--accent4); color:#1a9e75;' : 'background:var(--white); border-color:var(--border); color:var(--text); opacity:0.6;';
+                    return `
+                      <div style="padding:15px 20px; border-radius:var(--radius-sm); border:2px solid ${isCorrect ? 'var(--accent4)' : 'var(--border)'}; ${btnStyle} display:flex; align-items:center; gap:12px; font-weight:500;">
+                        <div class="option-letter ${['opt-a','opt-b','opt-c','opt-d','opt-e','opt-f','opt-g','opt-h'][i]}">${String.fromCharCode(65+i)}</div>
+                        ${opt || `Opción ${i+1}`}
+                        ${isCorrect ? '<span style="margin-left:auto; font-size:1.1rem">✅</span>' : ''}
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+                `}
+
+                ${q.note ? `
+                  <div class="answer-note" style="margin-top:20px; box-shadow:none">
+                    <span class="note-icon">📝</span>
+                    <div style="text-align:left">
+                      <div style="font-weight:700; font-size:0.75rem; text-transform:uppercase; color:var(--accent5); margin-bottom:4px">Nota post-respuesta:</div>
+                      ${q.note}
+                    </div>
+                  </div>
+                ` : ''}
+              </div>
+            `).join('')}
+
+            <!-- Word Cloud below questions (only for wordcloud type) -->
+            ${state.activeQuiz.type === 'wordcloud' ? `
+              <div style="background:var(--white); border-radius:var(--radius); padding:25px; border:1px solid var(--border); box-shadow:var(--shadow);">
+                <div style="font-weight:700; font-size:0.95rem; margin-bottom:16px; color:var(--text);">☁️ Nube de palabras</div>
+                <div id="cloud-container" style="width:100%; height:350px; position:relative; border-radius:8px; border:1px solid var(--border); overflow:hidden; background:white;">
+                  <div id="cloud-canvas" style="width:100%; height:100%; position:absolute; inset:0;"></div>
+                </div>
+                <p style="font-size:0.8rem; color:var(--muted); margin-top:10px; text-align:center;">${window.wordCloudManager.getUniqueCount(state.players)} palabras únicas de ${state.players.length} alumnos</p>
+              </div>
+            ` : ''}
+          </div>
+
+          <!-- Right Sidebar -->
+          <div style="width:280px; flex-shrink:0; position:sticky; top:15px;">
+
+            <!-- Share Link -->
+            <div style="background:var(--white); border-radius:var(--radius); padding:18px; border:1px solid var(--border); box-shadow:var(--shadow); margin-bottom:16px;">
+              <div style="font-weight:700; font-size:0.85rem; margin-bottom:10px; color:var(--text);">🔗 Enlace para compartir</div>
+              <div style="font-size:0.72rem; color:var(--muted); background:var(--bg); padding:8px 10px; border-radius:8px; word-break:break-all; margin-bottom:10px; border:1px solid var(--border); line-height:1.4;">
+                ${_previewLink}
+              </div>
+              <button class="btn btn-secondary" style="width:100%; font-size:0.82rem;" onclick="window.actions.copyLink('${_previewLink}')">📋 Copiar enlace</button>
             </div>
-          `).join('')}
+
+            <!-- Student List -->
+            <div style="background:var(--white); border-radius:var(--radius); padding:18px; border:1px solid var(--border); box-shadow:var(--shadow);">
+              <div style="font-weight:700; font-size:0.85rem; margin-bottom:12px; color:var(--text);">👥 Alumnos participantes <span style="font-weight:400; color:var(--muted);">(${state.players.length})</span></div>
+              ${state.players.length === 0
+                ? '<p style="color:var(--muted); font-size:0.82rem; text-align:center; padding:8px 0;">Sin alumnos conectados</p>'
+                : `<div style="max-height:400px; overflow-y:auto;">
+                    ${[...state.players].sort((a,b) => b.score - a.score).map(p => `
+                      <div style="display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--border);">
+                        <div style="width:28px; height:28px; border-radius:50%; background:var(--accent1); display:flex; align-items:center; justify-content:center; color:white; font-size:0.72rem; font-weight:700; flex-shrink:0;">${p.name.charAt(0).toUpperCase()}</div>
+                        <div style="flex:1; min-width:0;">
+                          <div style="font-size:0.82rem; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${p.name}</div>
+                          <div style="font-size:0.72rem; color:var(--muted);">${p.finished ? '✅ Terminado' : 'En curso'}</div>
+                        </div>
+                      </div>
+                    `).join('')}
+                  </div>`
+              }
+            </div>
+
+          </div>
         </div>
       </div>
     `;
@@ -543,6 +623,32 @@ function renderPlay() {
     const qIndex = state.localQIndex;
     
     if (qIndex >= total) {
+      if (state.activeQuiz.type === 'wordcloud') {
+         return `
+           <div class="page active">
+             <div class="play-screen" style="padding-top: 20px;">
+                <div class="badge-demo-row">
+                  <div class="badge-demo badge-demo-orange">
+                    <span class="dot"></span> ¡Finalizado!
+                  </div>
+                  <div class="badge-demo badge-demo-green">
+                    <span class="dot"></span> ${window.wordCloudManager.getUniqueCount(state.players)} palabras totales
+                  </div>
+                </div>
+                <div id="cloud-container" style="width:100%; height:400px; position:relative; border-radius:12px; border:2px solid var(--border); overflow:hidden; background:white; margin-bottom:20px; box-shadow:var(--shadow)">
+                   <div id="cloud-canvas" style="width:100%; height:100%; position:absolute; inset:0;"></div>
+                </div>
+                <div class="results-card" style="text-align:center; padding:20px; box-shadow:none; border:none; background:transparent">
+                  <h2>🚀 ¡Tus palabras volaron!</h2>
+                  <p style="color:var(--muted); font-size:1.0rem; margin-bottom:20px; max-width:400px; margin-inline:auto;">Ya completaste todas las preguntas. Mirá cómo sigue creciendo la nube con las respuestas de tus compañeros.</p>
+                  <div style="margin-top:10px">
+                    <button class="btn btn-secondary" onclick="window.router.go('landing')">🏠 Salir al inicio</button>
+                  </div>
+                </div>
+             </div>
+           </div>
+         `;
+      }
       const sorted = [...state.players].sort((a,b) => b.score - a.score);
       return `
         <div class="page active">
@@ -579,15 +685,36 @@ function renderPlay() {
   
   return `
     <div class="page active">
-      <div class="play-screen">
+      <div class="play-screen" style="padding-top: 20px;">
+        ${state.activeQuiz.type === 'wordcloud' ? `
+          <div class="badge-demo-row">
+            <div class="badge-demo badge-demo-orange">
+              <span class="dot"></span> Pregunta ${qIndex + 1}
+            </div>
+            <div class="badge-demo badge-demo-green">
+              <span class="dot"></span> ${window.wordCloudManager.getUniqueCount(state.players)} palabras únicas
+            </div>
+          </div>
+          <div id="cloud-container" style="width:100%; height:320px; position:relative; border-radius:12px; border:2px solid var(--border); overflow:hidden; background:white; margin-bottom:20px; box-shadow:var(--shadow)">
+             <div id="cloud-canvas" style="width:100%; height:100%; position:absolute; inset:0;"></div>
+          </div>
+        ` : `
         <div class="q-header">
           <span class="q-counter">Pregunta ${qIndex + 1} / ${total}</span>
           <div class="timer-ring ${state.timeLeft < 5 ? 'emergency' : ''}">${state.activeQuiz.timePerQ > 0 ? state.timeLeft : '∞'}</div>
         </div>
-        <div class="q-text" key="${qIndex}">${q.text}</div>
+        `}
+        <div class="q-text" key="${qIndex}" style="${state.activeQuiz.type === 'wordcloud' ? 'font-size:1.4rem; margin-bottom:10px' : ''}">${q.text}</div>
         <p style="color:var(--muted); font-size:0.85rem; margin-bottom:15px">
-          Seleccioná la respuesta correcta
+          ${state.activeQuiz.type === 'wordcloud' ? 'Escribí tus palabras' : 'Seleccioná la respuesta correcta'}
         </p>
+        ${state.activeQuiz.type === 'wordcloud' ? `
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            ${[0,1,2].map(i => `
+              <input class="form-input" id="wc-ans${i}" placeholder="Palabra ${i+1}..." style="text-align:center; padding:16px; font-size:1.15rem; font-weight:700" ${(currentAnswers.length > 0) ? 'disabled' : ''} value="${currentAnswers[i] || ''}" />
+            `).join('')}
+          </div>
+        ` : `
         <div class="answers-grid">
           ${q.options.map((opt, i) => {
             const isSelected = currentAnswers.includes(i);
@@ -610,6 +737,7 @@ function renderPlay() {
             `;
           }).join('')}
         </div>
+        `}
         <div style="margin-top:24px; text-align:center">
           ${state.showingFeedback && q.note ? `
             <div class="answer-note">
@@ -623,7 +751,7 @@ function renderPlay() {
               ${qIndex === total - 1 ? 'Ver Resultados Finales →' : 'Siguiente Pregunta →'}
             </button>
           ` : `
-            <button class="game-btn" onclick="window.actions.submitAnswer()" style="width:100%" ${currentAnswers.length === 0 ? 'disabled' : ''}>
+            <button class="game-btn" onclick="window.actions.submitAnswer()" style="width:100%" ${(state.activeQuiz.type !== 'wordcloud' && currentAnswers.length === 0) ? 'disabled' : ''}>
               Confirmar Respuesta ✔
             </button>
           `}
@@ -669,6 +797,208 @@ function renderResults() {
 }
 
 // --- LOGIC ---
+window.wordCloudManager = {
+  wordMap: {}, // { 'word': { count: 3, el: HTMLElement, size, color } }
+  placedWords: [], // { el, x, y, width, height }
+  colors: ['#6c63ff', '#43d9ad', '#ff6b6b', '#f9ca24', '#0c8599', '#e84393', '#00cec9', '#fdcb6e'],
+  
+  init: () => {
+    window.wordCloudManager.wordMap = {};
+    window.wordCloudManager.placedWords = [];
+    const canvas = document.getElementById('cloud-canvas');
+    if (canvas) canvas.innerHTML = '';
+  },
+
+  getUniqueCount: (players) => {
+    const unique = new Set();
+    players.forEach(p => {
+      if (p.responses) {
+        Object.values(p.responses).forEach(r => {
+          if (Array.isArray(r.chosen)) {
+            r.chosen.forEach(w => unique.add(w.toLowerCase().trim()));
+          }
+        });
+      }
+    });
+    return unique.size;
+  },
+
+  processPlayers: (players) => {
+    const canvas = document.getElementById('cloud-canvas');
+    if (!canvas) return;
+
+    let targetCounts = {};
+    players.forEach(p => {
+       if (p.responses) {
+         Object.values(p.responses).forEach(r => {
+           if (Array.isArray(r.chosen)) {
+             r.chosen.forEach(w => {
+               if (!w) return;
+               targetCounts[w] = (targetCounts[w] || 0) + 1;
+             });
+           }
+         });
+       }
+    });
+
+    for (let w in targetCounts) {
+       let count = targetCounts[w];
+       let wObj = window.wordCloudManager.wordMap[w];
+       if (!wObj) {
+          window.wordCloudManager.placeWord(w, count);
+       } else if (wObj.count < count) {
+          wObj.count = count;
+          window.wordCloudManager.growWord(wObj);
+       }
+    }
+  },
+
+  placeWord: (text, count) => {
+    const canvas = document.getElementById('cloud-canvas');
+    if (!canvas) return;
+
+    const wObj = {
+       text: text,
+       count: count,
+       color: window.wordCloudManager.colors[Object.keys(window.wordCloudManager.wordMap).length % window.wordCloudManager.colors.length]
+    };
+
+    const span = document.createElement('span');
+    span.className = 'cloud-word';
+    span.innerText = text;
+    span.style.color = 'white';
+    span.style.backgroundColor = wObj.color;
+    wObj.el = span;
+
+    window.wordCloudManager.wordMap[text] = wObj;
+    window.wordCloudManager.growWord(wObj);
+  },
+
+  growWord: (wObj) => {
+    const canvas = document.getElementById('cloud-canvas');
+    if (!canvas) return;
+
+    const baseSize = 14; 
+    const increment = 8;
+    let finalSize = baseSize + (wObj.count - 1) * increment;
+    if (finalSize > 64) finalSize = 64; 
+
+    wObj.size = finalSize;
+    wObj.el.style.fontSize = finalSize + 'px';
+    
+    wObj.el.classList.remove('word-growing');
+    void wObj.el.offsetWidth; 
+    wObj.el.classList.add('word-growing');
+
+    const existingIndex = window.wordCloudManager.placedWords.findIndex(pw => pw.wObj === wObj);
+    if (existingIndex > -1) {
+       window.wordCloudManager.placedWords.splice(existingIndex, 1);
+       wObj.el.remove();
+    }
+
+    const measure = document.createElement('span');
+    measure.className = 'cloud-word';
+    measure.style.fontSize = finalSize + 'px';
+    measure.style.animation = 'none';
+    measure.style.transform = 'none';
+    measure.innerText = wObj.text;
+    measure.style.visibility = 'hidden';
+    measure.style.position = 'absolute';
+    canvas.appendChild(measure);
+    const rect = measure.getBoundingClientRect();
+    const w = rect.width || measure.offsetWidth || (finalSize * wObj.text.length * 0.6);
+    const h = rect.height || measure.offsetHeight || (finalSize * 1.4);
+    measure.remove();
+
+    wObj.el.style.position = 'absolute';
+    wObj.el.style.visibility = 'hidden';
+    canvas.appendChild(wObj.el);
+
+    const canvasRect = canvas.getBoundingClientRect();
+    const canvasW = canvasRect.width || canvas.offsetWidth || 600;
+    const canvasH = canvasRect.height || canvas.offsetHeight || 400;
+    const centerX = canvasW / 2;
+    const centerY = canvasH / 2;
+    let angle = 0;
+    const a = 2;
+    const b = 4;
+
+    let placed = false;
+    let limit = 2000;
+
+    let spiralDir = window.wordCloudManager.placedWords.length % 2 === 0 ? 1 : -1;
+
+    while (!placed && limit > 0) {
+      limit--;
+      const r = a + b * angle;
+      const x = r * Math.cos(angle * spiralDir);
+      const y = r * Math.sin(angle * spiralDir);
+      const posX = centerX + x - (w / 2);
+      const posY = Math.max(0, centerY + y - (h / 2));
+
+      const testRect = { x: posX, y: posY, width: w, height: h };
+
+      let collision = false;
+      for (let pw of window.wordCloudManager.placedWords) {
+        if (window.wordCloudManager.overlaps(testRect, pw)) {
+          collision = true;
+          break;
+        }
+      }
+
+      if (!collision && posX >= 0 && posY >= 0 && (posX + w) <= canvasW && (posY + h) <= canvasH) {
+        wObj.el.style.left = posX + 'px';
+        wObj.el.style.top = posY + 'px';
+        wObj.el.style.visibility = 'visible';
+        window.wordCloudManager.placedWords.push({ x: posX, y: posY, width: w, height: h, wObj: wObj });
+        placed = true;
+      }
+
+      angle += 0.5;
+    }
+
+    if (!placed) {
+      // Fallback: try random positions with collision checking
+      for (let attempt = 0; attempt < 150; attempt++) {
+        const posX = Math.random() * Math.max(1, canvasW - w - 4);
+        const posY = Math.random() * Math.max(1, canvasH - h - 4);
+        const testRect = { x: posX, y: posY, width: w, height: h };
+        let collision = false;
+        for (let pw of window.wordCloudManager.placedWords) {
+          if (window.wordCloudManager.overlaps(testRect, pw)) { collision = true; break; }
+        }
+        if (!collision) {
+          wObj.el.style.left = posX + 'px';
+          wObj.el.style.top = posY + 'px';
+          wObj.el.style.visibility = 'visible';
+          window.wordCloudManager.placedWords.push({ x: posX, y: posY, width: w, height: h, wObj: wObj });
+          placed = true;
+          break;
+        }
+      }
+      if (!placed) {
+        // Last resort: force place
+        const posX = Math.random() * Math.max(1, canvasW - w - 4);
+        const posY = Math.random() * Math.max(1, canvasH - h - 4);
+        wObj.el.style.left = posX + 'px';
+        wObj.el.style.top = posY + 'px';
+        wObj.el.style.visibility = 'visible';
+        window.wordCloudManager.placedWords.push({ x: posX, y: posY, width: w, height: h, wObj: wObj });
+      }
+    }
+  },
+
+  overlaps: (r1, r2) => {
+    const pad = 8;
+    return !(
+      r1.x + r1.width + pad < r2.x ||
+      r1.x > r2.x + r2.width + pad ||
+      r1.y + r1.height + pad < r2.y ||
+      r1.y > r2.y + r2.height + pad
+    );
+  }
+};
+
 window.actions = {
   selectRole: async (role) => {
     state.role = role;
@@ -746,6 +1076,19 @@ window.actions = {
     if (!state.activeQuiz) return;
     if (field === 'timePerQ') val = parseInt(val) || 0;
     state.activeQuiz[field] = val;
+  },
+
+  newWordCloud: () => {
+    state.editingQuizIdx = null;
+    state.activeQuiz = { 
+      name: 'Nueva Nube de Palabras', 
+      type: 'wordcloud',
+      timePerQ: 0, 
+      questions: [ { text: '¿Qué palabra describe mejor el tema de hoy?', options: [], correct: [] } ], 
+      color: '#0c8599', 
+      bgUrl: '' 
+    };
+    setPage('creator');
   },
 
   newQuiz: () => {
@@ -926,9 +1269,11 @@ window.actions = {
     state.activeQuiz = quiz;
     
     // Listen to players
+    if (quiz.type === 'wordcloud') window.wordCloudManager.init();
     onSnapshot(collection(db, 'sessions', session.id, 'players'), (snap) => {
       state.players = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       render();
+      // wordcloud redraw is handled automatically by render()
     });
 
     setPage('play'); // Monitoring view for Profe
@@ -982,10 +1327,11 @@ window.actions = {
       render();
     });
 
-    // Listen to players (for results)
+    // Listen to players (for results & cloud)
     onSnapshot(collection(db, 'sessions', code, 'players'), (snap) => {
       state.players = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       render();
+      // wordcloud redraw is handled automatically by render()
     });
 
     // Go directly to play if session is already active — no lobby wait needed
@@ -1055,6 +1401,44 @@ window.actions = {
 
     const playerRef = doc(db, 'sessions', state.session.id, 'players', state.playerName);
     const player = state.players.find(p => p.name === state.playerName);
+    
+    if (state.activeQuiz.type === 'wordcloud') {
+       let inputs = [
+         document.getElementById('wc-ans0')?.value,
+         document.getElementById('wc-ans1')?.value,
+         document.getElementById('wc-ans2')?.value
+       ];
+       let chosenWords = inputs.map(w => (w || '').trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")).filter(w => w.length > 0 && /^[a-z0-9]+$/.test(w));
+       
+       if (chosenWords.length === 0) {
+         window.actions.startTimer();
+         return;
+       }
+       
+       const answeredQIndex = state.localQIndex;
+       const isFinished = (answeredQIndex + 1) >= total;
+       
+       await window.actions.stopTimer();
+       state.localQIndex++;
+       
+       // Instead of a direct import which might break bundlers without top-level await if setup weirdly,
+       // we should use a global if available, but Firebase updateDoc is not global.
+       // It's exposed via top-level imports in main.js, so we already have updateDoc.
+       await updateDoc(playerRef, {
+          [`responses.${answeredQIndex}`]: { 
+            chosen: chosenWords,
+            isCorrect: true,
+            answeredAt: new Date().toISOString()
+          },
+          currentAnswer: chosenWords, 
+          qProgress: isFinished ? answeredQIndex : answeredQIndex + 1,
+          finished: isFinished
+       });
+
+       render();
+       return;
+    }
+
     const chosen = player?.currentAnswer || [];
     
     // Check correctness: grant point if chosen option is among the correct ones
