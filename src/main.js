@@ -429,18 +429,12 @@ function renderPlay() {
           <div style="display:flex; gap:10px">
             <button class="btn btn-secondary" onclick="window.actions.copyLink('${window.location.origin}${window.location.pathname}?session=${state.session.code}')">📋 Link</button>
             <button class="btn btn-outline-primary" onclick="window.actions.startPreview()">👀 Previsualizar</button>
+            <button class="btn btn-danger" onclick="window.actions.clearAllPlayers()" style="padding:10px">🗑 Vaciar Partida</button>
             <button class="btn btn-outline-secondary" onclick="window.actions.endSession()">🏠 Salir</button>
           </div>
         </div>
         
-        <div class="section-title">${state.activeQuiz.type === 'wordcloud' ? 'Resumen de Participación' : 'Progreso de la clase'}</div>
-        ${state.activeQuiz.type === 'wordcloud' ? `
-          <div style="background:var(--white); border-radius:var(--radius); padding:25px; border:1px solid var(--border); box-shadow:var(--shadow); text-align:center">
-             <div style="font-size:2rem; margin-bottom:10px">👥</div>
-             <div style="font-weight:700; color:var(--muted)">${state.players.length} Alumnos conectados</div>
-             <p style="font-size:0.85rem; color:var(--muted); margin:5px 0 0">Las palabras se agregan automáticamente a la nube superior.</p>
-          </div>
-        ` : `
+        <div class="section-title">Participantes (${state.players.length})</div>
         <div class="leaderboard">
           <div class="lb-header" style="display:flex; padding:10px; font-size:0.8rem; color:var(--muted); font-weight:700">
             <div style="width:40px">#</div>
@@ -449,10 +443,10 @@ function renderPlay() {
             <div style="width:80px; text-align:right">Puntaje</div>
           </div>
           ${state.players.sort((a,b) => b.score - a.score).map((p, i) => `
-            <div class="lb-row" style="cursor:pointer" onclick="window.actions.viewPlayerDetail('${p.name}')">
+            <div class="lb-row" style="cursor:pointer" onclick="window.actions.viewPlayerDetail('${p.id}')">
               <div class="lb-rank">${i+1}</div>
               <div class="lb-name" style="display:flex; align-items:center; gap:8px">
-                <button class="btn-del" onclick="event.stopPropagation(); window.actions.deletePlayer('${p.name}')" title="Eliminar información">🗑</button>
+                <button class="btn-del" onclick="event.stopPropagation(); window.actions.deletePlayer('${p.id}', '${p.name}')" title="Eliminar información">🗑</button>
                 <span>${p.name} <span style="font-size:0.75rem; color:var(--accent1); margin-left:5px">🔍 Ver respuestas</span></span>
               </div>
               <div style="width:100px; text-align:center">
@@ -466,10 +460,9 @@ function renderPlay() {
             </div>
           `).join('')}
         </div>
-        `}
 
         ${state.selectedPlayerDetail ? (() => {
-          const p = state.players.find(pl => pl.name === state.selectedPlayerDetail);
+          const p = state.players.find(pl => pl.id === state.selectedPlayerDetail);
           if (!p) return '';
           const totalQs = state.activeQuiz.questions.length;
           return `
@@ -495,12 +488,16 @@ function renderPlay() {
                         
                         <div style="font-size:0.85rem">
                           <div style="margin-bottom:5px">
-                            <b>Respuesta del alumno:</b> 
-                            ${chosen.length > 0 ? chosen.map(c => q.options[c]).join(', ') : '<span style="color:var(--muted)">Sin respuesta</span>'}
+                            <b>${state.activeQuiz.type === 'wordcloud' ? 'Palabras enviadas:' : 'Respuesta del alumno:'}</b> 
+                            ${chosen.length > 0 
+                              ? (state.activeQuiz.type === 'wordcloud' ? chosen.join(', ') : chosen.map(c => q.options[c]).join(', ')) 
+                              : '<span style="color:var(--muted)">Sin respuesta</span>'}
                           </div>
+                          ${state.activeQuiz.type !== 'wordcloud' ? `
                           <div style="color:${isCorrect ? '#1a9e75' : '#c0392b'}">
                             <b>Respuesta correcta:</b> ${correctIndices.map(c => q.options[c]).join(', ')}
                           </div>
+                          ` : ''}
                         </div>
                       </div>
                     `;
@@ -659,10 +656,10 @@ function renderPlay() {
             
             <div class="leaderboard">
               ${sorted.map((p, i) => `
-                <div class="lb-row ${p.name === state.playerName ? 'highlight' : ''}">
+                <div class="lb-row ${p.id === state.playerId ? 'highlight' : ''}">
                   <div class="lb-rank ${i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : ''}">${i < 3 ? ['🥇','🥈','🥉'][i] : i+1}</div>
                   <div class="lb-name">
-                    ${p.name} ${p.name === state.playerName ? '<span class="badge badge-purple">Tú</span>' : ''}
+                    ${p.name} ${p.id === state.playerId ? '<span class="badge badge-purple">Tú</span>' : ''}
                     ${p.finished ? ' ✅' : ' ⏳'}
                   </div>
                   <div class="lb-bar"><div class="lb-bar-fill" style="width:${total > 0 ? Math.round(((p.score||0)/total)*100) : 0}%"></div></div>
@@ -689,13 +686,13 @@ function renderPlay() {
         ${state.activeQuiz.type === 'wordcloud' ? `
           <div class="badge-demo-row">
             <div class="badge-demo badge-demo-orange">
-              <span class="dot"></span> Pregunta ${qIndex + 1}
+              <span class="dot"></span> ${state.showingFeedback ? '¡Palabras enviadas!' : `Pregunta ${qIndex + 1}`}
             </div>
             <div class="badge-demo badge-demo-green">
               <span class="dot"></span> ${window.wordCloudManager.getUniqueCount(state.players)} palabras únicas
             </div>
           </div>
-          <div id="cloud-container" style="width:100%; height:320px; position:relative; border-radius:12px; border:2px solid var(--border); overflow:hidden; background:white; margin-bottom:20px; box-shadow:var(--shadow)">
+          <div id="cloud-container" style="width:100%; height:${state.showingFeedback ? '500px' : '320px'}; position:relative; border-radius:12px; border:2px solid var(--border); overflow:hidden; background:white; margin-bottom:20px; box-shadow:var(--shadow); transition: height 0.4s ease;">
              <div id="cloud-canvas" style="width:100%; height:100%; position:absolute; inset:0;"></div>
           </div>
         ` : `
@@ -705,38 +702,47 @@ function renderPlay() {
         </div>
         `}
         <div class="q-text" key="${qIndex}" style="${state.activeQuiz.type === 'wordcloud' ? 'font-size:1.4rem; margin-bottom:10px' : ''}">${q.text}</div>
-        <p style="color:var(--muted); font-size:0.85rem; margin-bottom:15px">
-          ${state.activeQuiz.type === 'wordcloud' ? 'Escribí tus palabras' : 'Seleccioná la respuesta correcta'}
-        </p>
-        ${state.activeQuiz.type === 'wordcloud' ? `
-          <div style="display:flex; flex-direction:column; gap:12px;">
-            ${[0,1,2].map(i => `
-              <input class="form-input" id="wc-ans${i}" placeholder="Palabra ${i+1}..." style="text-align:center; padding:16px; font-size:1.15rem; font-weight:700" ${(currentAnswers.length > 0) ? 'disabled' : ''} value="${currentAnswers[i] || ''}" />
-            `).join('')}
-          </div>
+        
+        ${state.activeQuiz.type === 'wordcloud' && state.showingFeedback ? `
+           <div style="text-align:center; padding:20px; background:#f0fff9; border-radius:16px; border:1px solid #b6f5e0; margin-bottom:20px; animation: popIn 0.4s ease;">
+             <div style="font-size:2rem; margin-bottom:8px">✨</div>
+             <div style="font-weight:700; color:#1a9e75">¡Tus respuestas se unieron a la nube!</div>
+             <p style="font-size:0.85rem; color:var(--muted)">Mirá cómo crece el resultado con tus compañeros.</p>
+           </div>
         ` : `
-        <div class="answers-grid">
-          ${q.options.map((opt, i) => {
-            const isSelected = currentAnswers.includes(i);
-            const isActuallyCorrect = Array.isArray(q.correct) ? q.correct.includes(i) : q.correct === i;
-            let feedbackClass = '';
-            if (state.showingFeedback) {
-              // Show all results: green = correct, red = wrong
-              feedbackClass = isActuallyCorrect ? 'correct' : 'wrong';
-            } else if (isSelected) {
-              // Before submitting: highlight selected
-              feedbackClass = 'selected';
-            }
-            return `
-              <button class="answer-btn ${feedbackClass}" 
-                ${(currentAnswers.length > 0 && !state.showingFeedback) || state.showingFeedback ? 'disabled' : ''}
-                onclick="window.actions.selectStudentAnswer(${i})">
-                <div class="option-letter ${['opt-a','opt-b','opt-c','opt-d','opt-e','opt-f','opt-g','opt-h'][i]}">${String.fromCharCode(65+i)}</div>
-                ${opt || `Opción ${i+1}`}
-              </button>
-            `;
-          }).join('')}
-        </div>
+          <p style="color:var(--muted); font-size:0.85rem; margin-bottom:15px">
+            ${state.activeQuiz.type === 'wordcloud' ? 'Escribí tus palabras' : 'Seleccioná la respuesta correcta'}
+          </p>
+          ${state.activeQuiz.type === 'wordcloud' ? `
+            <div style="display:flex; flex-direction:column; gap:12px;">
+              ${[0,1,2].map(i => `
+                <input class="form-input" id="wc-ans${i}" placeholder="Palabra ${i+1}..." style="text-align:center; padding:16px; font-size:1.15rem; font-weight:700" ${(currentAnswers.length > 0) ? 'disabled' : ''} value="${currentAnswers[i] || ''}" />
+              `).join('')}
+            </div>
+          ` : `
+          <div class="answers-grid">
+            ${q.options.map((opt, i) => {
+              const isSelected = currentAnswers.includes(i);
+              const isActuallyCorrect = Array.isArray(q.correct) ? q.correct.includes(i) : q.correct === i;
+              let feedbackClass = '';
+              if (state.showingFeedback) {
+                // Show all results: green = correct, red = wrong
+                feedbackClass = isActuallyCorrect ? 'correct' : 'wrong';
+              } else if (isSelected) {
+                // Before submitting: highlight selected
+                feedbackClass = 'selected';
+              }
+              return `
+                <button class="answer-btn ${feedbackClass}" 
+                  ${(currentAnswers.length > 0 && !state.showingFeedback) || state.showingFeedback ? 'disabled' : ''}
+                  onclick="window.actions.selectStudentAnswer(${i})">
+                  <div class="option-letter ${['opt-a','opt-b','opt-c','opt-d','opt-e','opt-f','opt-g','opt-h'][i]}">${String.fromCharCode(65+i)}</div>
+                  ${opt || `Opción ${i+1}`}
+                </button>
+              `;
+            }).join('')}
+          </div>
+          `}
         `}
         <div style="margin-top:24px; text-align:center">
           ${state.showingFeedback && q.note ? `
@@ -780,8 +786,8 @@ function renderResults() {
             <div class="lb-row">
               <div class="lb-rank ${i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : ''}">${i < 3 ? ['🥇','🥈','🥉'][i] : i+1}</div>
               <div class="lb-name" style="display:flex; align-items:center; gap:8px">
-                ${state.role === 'profe' ? `<button class="btn-del" onclick="window.actions.deletePlayer('${p.name}')" title="Eliminar información">🗑</button>` : ''}
-                <span>${p.name} ${state.playerName && p.name === state.playerName ? '<span class="badge badge-purple">Tú</span>' : ''}</span>
+                ${state.role === 'profe' ? `<button class="btn-del" onclick="window.actions.deletePlayer('${p.id}', '${p.name}')" title="Eliminar información">🗑</button>` : ''}
+                <span>${p.name} ${state.playerId && p.id === state.playerId ? '<span class="badge badge-purple">Tú</span>' : ''}</span>
               </div>
               <div class="lb-bar"><div class="lb-bar-fill" style="width:${total > 0 ? Math.round(((p.score||0)/total)*100) : 0}%"></div></div>
               <div class="lb-score">${p.score || 0}/${total}</div>
@@ -1291,14 +1297,6 @@ window.actions = {
     const sessionData = sessSnap.data();
     // No more status === 'finished' check — game is always available!
     
-    // Bug #11 fix: check for duplicate player names
-    const playerRef = doc(db, 'sessions', code, 'players', name);
-    const existingPlayer = await getDoc(playerRef);
-    if (existingPlayer.exists()) {
-      await showAlert(`Ya hay un jugador con el nombre "${name}". Elegí otro nombre.`, 'warning');
-      return;
-    }
-
     state.session = { id: code, ...sessionData };
     state.playerName = name;
     state.role = 'alumno';
@@ -1307,8 +1305,16 @@ window.actions = {
     const qSnap = await getDoc(doc(db, 'quizzes', state.session.quizId));
     state.activeQuiz = qSnap.data();
 
-    // Register player
-    await setDoc(playerRef, { name, score: 0, currentAnswer: [], responses: {}, qProgress: 0, finished: false });
+    // Register player with unique ID
+    const playerRef = await addDoc(collection(db, 'sessions', code, 'players'), { 
+      name, 
+      score: 0, 
+      currentAnswer: [], 
+      responses: {}, 
+      qProgress: 0, 
+      finished: false 
+    });
+    state.playerId = playerRef.id;
 
     // Listen to session changes
     onSnapshot(doc(db, 'sessions', code), (sn) => {
@@ -1379,7 +1385,7 @@ window.actions = {
   },
 
   selectStudentAnswer: async (idx) => {
-    let player = state.players.find(p => p.name === state.playerName);
+    let player = state.players.find(p => p.id === state.playerId);
     if (!player.currentAnswer) player.currentAnswer = [];
     
     // If already answered this question, don't allow change
@@ -1390,7 +1396,7 @@ window.actions = {
     render();
 
     // Sync immediately to Firebase so the choice is locked in the cloud too
-    const playerRef = doc(db, 'sessions', state.session.id, 'players', state.playerName);
+    const playerRef = doc(db, 'sessions', state.session.id, 'players', state.playerId);
     await updateDoc(playerRef, { currentAnswer: [idx] });
   },
 
@@ -1399,8 +1405,8 @@ window.actions = {
     const total = state.activeQuiz.questions.length;
     const q = state.activeQuiz.questions[state.localQIndex];
 
-    const playerRef = doc(db, 'sessions', state.session.id, 'players', state.playerName);
-    const player = state.players.find(p => p.name === state.playerName);
+    const playerRef = doc(db, 'sessions', state.session.id, 'players', state.playerId);
+    const player = state.players.find(p => p.id === state.playerId);
     
     if (state.activeQuiz.type === 'wordcloud') {
        let inputs = [
@@ -1419,23 +1425,32 @@ window.actions = {
        const isFinished = (answeredQIndex + 1) >= total;
        
        await window.actions.stopTimer();
-       state.localQIndex++;
        
-       // Instead of a direct import which might break bundlers without top-level await if setup weirdly,
-       // we should use a global if available, but Firebase updateDoc is not global.
-       // It's exposed via top-level imports in main.js, so we already have updateDoc.
+       // Sync to Firebase
        await updateDoc(playerRef, {
           [`responses.${answeredQIndex}`]: { 
             chosen: chosenWords,
             isCorrect: true,
             answeredAt: new Date().toISOString()
           },
-          currentAnswer: chosenWords, 
-          qProgress: isFinished ? answeredQIndex : answeredQIndex + 1,
-          finished: isFinished
+          currentAnswer: chosenWords
        });
 
+       if (isFinished) {
+         await updateDoc(playerRef, { finished: true });
+       }
+
+       // Show feedback with the cloud visible
+       state.showingFeedback = true;
        render();
+
+       // Auto-advance
+       clearTimeout(state.autoNextTimeout);
+       state.autoNextTimeout = setTimeout(() => {
+         if (state.currentPage === 'play' && state.showingFeedback) {
+           window.actions.proceedToNext();
+         }
+       }, 5000); // 5 seconds to appreciate the cloud
        return;
     }
 
@@ -1489,7 +1504,7 @@ window.actions = {
     state.showingFeedback = false;
     
     // Sync progress to DB when moving to next question or finishing
-    const playerRef = doc(db, 'sessions', state.session.id, 'players', state.playerName);
+    const playerRef = doc(db, 'sessions', state.session.id, 'players', state.playerId);
     await updateDoc(playerRef, { qProgress: state.localQIndex });
     
     const isFinished = state.localQIndex >= state.activeQuiz.questions.length;
@@ -1529,8 +1544,8 @@ window.actions = {
     render();
   },
 
-  viewPlayerDetail: (name) => {
-    state.selectedPlayerDetail = name;
+  viewPlayerDetail: (id) => {
+    state.selectedPlayerDetail = id;
     render();
   },
 
@@ -1543,7 +1558,7 @@ window.actions = {
     navigator.clipboard.writeText(url).then(() => showToast('📋 Enlace copiado al portapapeles!', 'success'));
   },
 
-  deletePlayer: async (name) => {
+  deletePlayer: async (id, name) => {
     const ok = await showConfirm(`¿Eliminar la información de "${name}"?`, {
       confirmText: '🗑 Eliminar',
       cancelText: 'Cancelar',
@@ -1551,11 +1566,29 @@ window.actions = {
     });
     if (ok) {
       try {
-        await deleteDoc(doc(db, 'sessions', state.session.id, 'players', name));
+        await deleteDoc(doc(db, 'sessions', state.session.id, 'players', id));
         showToast(`Jugador "${name}" eliminado`, 'info');
       } catch (e) {
         console.error(e);
         await showAlert('Error al eliminar el jugador.', 'error');
+      }
+    }
+  },
+
+  clearAllPlayers: async () => {
+    const ok = await showConfirm(`¿Estás seguro de que querés eliminar a TODOS los participantes y sus registros?`, {
+      confirmText: '🗑 Eliminar Todo',
+      cancelText: 'Cancelar',
+      type: 'danger'
+    });
+    if (ok) {
+      try {
+        const batch = state.players.map(p => deleteDoc(doc(db, 'sessions', state.session.id, 'players', p.id)));
+        await Promise.all(batch);
+        showToast(`Todos los participantes han sido eliminados`, 'info');
+      } catch (e) {
+        console.error(e);
+        await showAlert('Error al vaciar la partida.', 'error');
       }
     }
   }
