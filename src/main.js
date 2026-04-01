@@ -97,6 +97,9 @@ let state = {
   currentPage: 'landing',
   quizzes: [],
   activeQuiz: null,
+  playerName: '',
+  playerId: '',
+  fullscreenCloud: false,
   session: null,   // { id, code, quizId, status, currentQ, ... }
   players: [],
   playerScore: 0,
@@ -170,12 +173,14 @@ function render() {
 
   // Manage word cloud rendering only if it's the correct mode and we are in play
   if (state.activeQuiz?.type === 'wordcloud' && state.currentPage === 'play') {
-    const canvasEl = document.getElementById('cloud-canvas');
+    const canvasEl = document.getElementById('cloud-canvas') || document.getElementById('cloud-canvas-fs');
     if (canvasEl) {
       cancelAnimationFrame(window._cloudRaf);
       window._cloudRaf = requestAnimationFrame(() => {
         document.fonts.ready.then(() => {
-          window.wordCloudManager.init();
+          // Pass override IDs if in fullscreen
+          const isFS = state.fullscreenCloud && state.role === 'profe';
+          window.wordCloudManager.init(isFS ? 'cloud-container-fs' : 'cloud-container', isFS ? 'cloud-canvas-fs' : 'cloud-canvas');
           window.wordCloudManager.processPlayers(state.players || []);
         });
       });
@@ -572,12 +577,37 @@ function renderPlay() {
             <!-- Word Cloud below questions (only for wordcloud type) -->
             ${state.activeQuiz.type === 'wordcloud' ? `
               <div style="background:var(--white); border-radius:var(--radius); padding:25px; border:1px solid var(--border); box-shadow:var(--shadow);">
-                <div style="font-weight:700; font-size:0.95rem; margin-bottom:16px; color:var(--text);">☁️ Nube de palabras</div>
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+                  <div style="font-weight:700; font-size:0.95rem; color:var(--text);">☁️ Nube de palabras</div>
+                  <button onclick="window.actions.toggleFullscreenCloud(true)" class="btn btn-secondary" style="font-size:0.8rem; padding:6px 12px;">⛶ Pantalla completa</button>
+                </div>
                 <div id="cloud-container" style="width:100%; height:350px; position:relative; border-radius:8px; border:1px solid var(--border); overflow:hidden; background:white;">
                   <div id="cloud-canvas" style="width:100%; height:100%; position:absolute; inset:0;"></div>
                 </div>
                 <p style="font-size:0.8rem; color:var(--muted); margin-top:10px; text-align:center;">${window.wordCloudManager.getUniqueCount(state.players)} palabras únicas de ${state.players.length} alumnos</p>
               </div>
+
+              ${state.fullscreenCloud ? `
+                <div style="position:fixed; inset:0; z-index:9999; background:#fff; display:flex; flex-direction:column; padding:0;">
+                  <!-- Header with question and close button -->
+                  <div style="background:var(--accent1); color:white; padding:20px 28px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0;">
+                    <div style="flex:1; min-width:0;">
+                      <div style="font-size:0.78rem; font-weight:600; opacity:0.8; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.05em;">Pregunta 1 / ${state.activeQuiz.questions.length}</div>
+                      <div style="font-size:1.5rem; font-weight:800; font-family:'Plus Jakarta Sans',sans-serif; line-height:1.2;">${state.activeQuiz.questions[0]?.text || ''}</div>
+                    </div>
+                    <button onclick="window.actions.toggleFullscreenCloud(false)" style="background:rgba(255,255,255,0.2); border:none; color:white; border-radius:8px; padding:10px 16px; cursor:pointer; font-size:1rem; font-weight:700; flex-shrink:0; margin-left:20px;">✕ Cerrar</button>
+                  </div>
+                  <!-- Word cloud fills remaining space -->
+                  <div style="flex:1; min-height:0; padding:20px; box-sizing:border-box;">
+                    <div id="cloud-container-fs" style="width:100%; height:100%; position:relative; border-radius:12px; border:1px solid var(--border); overflow:hidden; background:white; box-shadow:var(--shadow);">
+                      <div id="cloud-canvas-fs" style="width:100%; height:100%; position:absolute; inset:0;"></div>
+                    </div>
+                  </div>
+                  <div style="text-align:center; padding:10px; font-size:0.85rem; color:var(--muted); flex-shrink:0;">
+                    ${window.wordCloudManager.getUniqueCount(state.players)} palabras únicas de ${state.players.length} alumnos
+                  </div>
+                </div>
+              ` : ''}
             ` : ''}
           </div>
 
@@ -813,11 +843,13 @@ window.wordCloudManager = {
   wordMap: {}, // { 'word': { count: 3, el: HTMLElement, size, color } }
   placedWords: [], // { el, x, y, width, height }
   colors: ['#6c63ff', '#43d9ad', '#ff6b6b', '#f9ca24', '#0c8599', '#e84393', '#00cec9', '#fdcb6e'],
-  
-  init: () => {
+  canvasId: 'cloud-canvas',
+
+  init: (containerId, canvasId) => {
+    window.wordCloudManager.canvasId = canvasId || 'cloud-canvas';
     window.wordCloudManager.wordMap = {};
     window.wordCloudManager.placedWords = [];
-    const canvas = document.getElementById('cloud-canvas');
+    const canvas = document.getElementById(window.wordCloudManager.canvasId);
     if (canvas) canvas.innerHTML = '';
   },
 
@@ -836,7 +868,7 @@ window.wordCloudManager = {
   },
 
   processPlayers: (players) => {
-    const canvas = document.getElementById('cloud-canvas');
+    const canvas = document.getElementById(window.wordCloudManager.canvasId);
     if (!canvas) return;
 
     let targetCounts = {};
@@ -866,7 +898,7 @@ window.wordCloudManager = {
   },
 
   placeWord: (text, count) => {
-    const canvas = document.getElementById('cloud-canvas');
+    const canvas = document.getElementById(window.wordCloudManager.canvasId);
     if (!canvas) return;
 
     const wObj = {
@@ -887,7 +919,7 @@ window.wordCloudManager = {
   },
 
   growWord: (wObj) => {
-    const canvas = document.getElementById('cloud-canvas');
+    const canvas = document.getElementById(window.wordCloudManager.canvasId);
     if (!canvas) return;
 
     const baseSize = 14; 
@@ -1597,6 +1629,11 @@ window.actions = {
         await showAlert('Error al vaciar la partida.', 'error');
       }
     }
+  },
+
+  toggleFullscreenCloud: (val) => {
+    state.fullscreenCloud = val;
+    render();
   }
 };
 
@@ -1623,6 +1660,12 @@ function checkUrlParams() {
 }
 
 checkUrlParams();
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && state.fullscreenCloud) {
+    window.actions.toggleFullscreenCloud(false);
+  }
+});
 
 // Add Auth Listener
 onAuthStateChanged(auth, (user) => {
