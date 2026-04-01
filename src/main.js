@@ -1188,7 +1188,9 @@ window.actions = {
     if (!state.activeQuiz) return;
     if (field === 'timePerQ') val = parseInt(val) || 0;
     state.activeQuiz[field] = val;
-    render();
+    // Text fields update state only — no render() to avoid losing focus mid-typing
+    const textFields = ['name', 'bgUrl'];
+    if (!textFields.includes(field)) render();
   },
 
   newWordCloud: () => {
