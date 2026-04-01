@@ -168,14 +168,18 @@ function render() {
       content.innerHTML = '<h1>404 Not Found</h1>';
   }
 
+  // Manage word cloud rendering only if it's the correct mode and we are in play
   if (state.activeQuiz?.type === 'wordcloud' && state.currentPage === 'play') {
-    cancelAnimationFrame(window._cloudRaf);
-    window._cloudRaf = requestAnimationFrame(() => {
-      document.fonts.ready.then(() => {
-        window.wordCloudManager.init();
-        window.wordCloudManager.processPlayers(state.players || []);
+    const canvasEl = document.getElementById('cloud-canvas');
+    if (canvasEl) {
+      cancelAnimationFrame(window._cloudRaf);
+      window._cloudRaf = requestAnimationFrame(() => {
+        document.fonts.ready.then(() => {
+          window.wordCloudManager.init();
+          window.wordCloudManager.processPlayers(state.players || []);
+        });
       });
-    });
+    }
   }
 }
 
@@ -692,9 +696,11 @@ function renderPlay() {
               <span class="dot"></span> ${window.wordCloudManager.getUniqueCount(state.players)} palabras únicas
             </div>
           </div>
-          <div id="cloud-container" style="width:100%; height:${state.showingFeedback ? '500px' : '320px'}; position:relative; border-radius:12px; border:2px solid var(--border); overflow:hidden; background:white; margin-bottom:20px; box-shadow:var(--shadow); transition: height 0.4s ease;">
-             <div id="cloud-canvas" style="width:100%; height:100%; position:absolute; inset:0;"></div>
-          </div>
+          ${state.showingFeedback ? `
+            <div id="cloud-container" style="width:100%; height:500px; position:relative; border-radius:12px; border:2px solid var(--border); overflow:hidden; background:white; margin-bottom:20px; box-shadow:var(--shadow); transition: height 0.4s ease; animation: slideDown 0.5s ease;">
+               <div id="cloud-canvas" style="width:100%; height:100%; position:absolute; inset:0;"></div>
+            </div>
+          ` : ''}
         ` : `
         <div class="q-header">
           <span class="q-counter">Pregunta ${qIndex + 1} / ${total}</span>
