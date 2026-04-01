@@ -470,6 +470,12 @@ function renderPlay() {
       <div class="page active">
         ${state.activeQuiz.type === 'wordcloud' ? `
           <div id="cloud-container" style="width:100%; height:550px; position:relative; border-radius:12px; border:2px solid var(--border); overflow:hidden; background:white; margin-bottom:20px; box-shadow:var(--shadow)">
+             <div class="cloud-question-wrapper">
+               <div class="cloud-question">
+                 <span class="cloud-question-label">Pregunta en vivo</span>
+                 <div class="cloud-question-text">${state.activeQuiz.questions[state.session.currentQ || 0]?.text || ''}</div>
+               </div>
+             </div>
              <div id="cloud-canvas" style="width:100%; height:100%; position:absolute; inset:0;"></div>
           </div>
           <p style="text-align:center; color:var(--muted); font-size:0.9rem; margin-bottom:24px">
@@ -638,8 +644,8 @@ function renderPlay() {
                   <!-- Header with question and close button -->
                   <div style="background:var(--accent1); color:white; padding:20px 28px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0;">
                     <div style="flex:1; min-width:0;">
-                      <div style="font-size:0.78rem; font-weight:600; opacity:0.8; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.05em;">Pregunta 1 / ${state.activeQuiz.questions.length}</div>
-                      <div style="font-size:1.5rem; font-weight:800; font-family:'Plus Jakarta Sans',sans-serif; line-height:1.2;">${state.activeQuiz.questions[0]?.text || ''}</div>
+                      <div style="font-size:0.78rem; font-weight:600; opacity:0.8; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.05em;">Pregunta ${(state.session.currentQ || 0) + 1} / ${state.activeQuiz.questions.length}</div>
+                      <div style="font-size:1.5rem; font-weight:800; font-family:'Plus Jakarta Sans',sans-serif; line-height:1.2;">${state.activeQuiz.questions[state.session.currentQ || 0]?.text || ''}</div>
                     </div>
                     <button onclick="window.actions.toggleFullscreenCloud(false)" style="background:rgba(255,255,255,0.2); border:none; color:white; border-radius:8px; padding:10px 16px; cursor:pointer; font-size:1rem; font-weight:700; flex-shrink:0; margin-left:20px;">✕ Cerrar</button>
                   </div>
@@ -713,6 +719,12 @@ function renderPlay() {
                   </div>
                 </div>
                 <div id="cloud-container" style="width:100%; height:400px; position:relative; border-radius:12px; border:2px solid var(--border); overflow:hidden; background:white; margin-bottom:20px; box-shadow:var(--shadow)">
+                   <div class="cloud-question-wrapper">
+                     <div class="cloud-question">
+                        <span class="cloud-question-label">Pregunta final</span>
+                        <div class="cloud-question-text">${state.activeQuiz.questions[state.activeQuiz.questions.length-1]?.text || ''}</div>
+                     </div>
+                   </div>
                    <div id="cloud-canvas" style="width:100%; height:100%; position:absolute; inset:0;"></div>
                 </div>
                 <div class="results-card" style="text-align:center; padding:20px; box-shadow:none; border:none; background:transparent">
@@ -774,6 +786,12 @@ function renderPlay() {
           </div>
           ${state.showingFeedback ? `
             <div id="cloud-container" style="width:100%; height:500px; position:relative; border-radius:12px; border:2px solid var(--border); overflow:hidden; background:white; margin-bottom:20px; box-shadow:var(--shadow); transition: height 0.4s ease; animation: slideDown 0.5s ease;">
+               <div class="cloud-question-wrapper">
+                 <div class="cloud-question">
+                   <span class="cloud-question-label">Pregunta actual</span>
+                   <div class="cloud-question-text">${state.activeQuiz.questions[qIndex]?.text || ''}</div>
+                 </div>
+               </div>
                <div id="cloud-canvas" style="width:100%; height:100%; position:absolute; inset:0;"></div>
             </div>
           ` : ''}
