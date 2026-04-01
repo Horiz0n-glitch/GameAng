@@ -19,6 +19,20 @@ import { storage, auth, googleProvider } from './firebase.js';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
 
+const PALETTES = {
+  normal: ['#6c63ff', '#43d9ad', '#ff6b6b', '#f9ca24', '#0c8599', '#e84393', '#00cec9', '#fdcb6e'],
+  pastel: ['#a29bfe', '#55efc4', '#fab1a0', '#ffeaa7', '#81ecec', '#fd79a8', '#74b9ff', '#e17055'],
+  cold: ['#0984e3', '#00cec9', '#74b9ff', '#81ecec', '#6c5ce7', '#a29bfe', '#22a6b3', '#7ed6df']
+};
+
+const FONTS = [
+  { name: 'Normal', value: "'Plus Jakarta Sans', sans-serif" },
+  { name: 'Moderna', value: "'Montserrat', sans-serif" },
+  { name: 'Divertida', value: "'Bangers', cursive" },
+  { name: 'Manuscrita', value: "'Indie Flower', cursive" },
+  { name: 'Clásica', value: "'Playfair Display', serif" }
+];
+
 // ---- CUSTOM NOTIFICATION SYSTEM ----
 // Replaces all native alert() and confirm() with in-app notifications
 
@@ -178,6 +192,8 @@ function render() {
       cancelAnimationFrame(window._cloudRaf);
       window._cloudRaf = requestAnimationFrame(() => {
         document.fonts.ready.then(() => {
+          // Force layout with font
+          if (canvasEl) canvasEl.style.setProperty('--cloud-font', state.activeQuiz.font || 'inherit');
           // Pass override IDs if in fullscreen
           const isFS = state.fullscreenCloud && state.role === 'profe';
           window.wordCloudManager.init(isFS ? 'cloud-container-fs' : 'cloud-container', isFS ? 'cloud-canvas-fs' : 'cloud-canvas');
@@ -295,6 +311,36 @@ function renderCreator() {
             </div>
             <p style="font-size:0.75rem; color:var(--muted)">Sube una de tu pc o pega el enlace arriba.</p>
           </div>
+
+          ${state.activeQuiz?.type === 'wordcloud' ? `
+            <hr style="border:none; border-top:1px solid var(--border); margin:16px 0">
+            <div class="form-group">
+              <label class="form-label">🎨 Paleta de Colores</label>
+              <div style="display:flex; flex-direction:column; gap:8px">
+                ${Object.keys(PALETTES).map(p => `
+                  <button class="btn ${(state.activeQuiz.palette || 'normal') === p ? 'btn-primary' : 'btn-secondary'}" 
+                    style="justify-content:space-between; padding:10px 15px; font-size:0.85rem"
+                    onclick="window.actions.updateQuizMeta('palette', '${p}')">
+                    <span style="text-transform:capitalize">${p === 'normal' ? 'Normal' : p === 'pastel' ? 'Pastel' : 'Fríos'}</span>
+                    <div style="display:flex; gap:4px">
+                      ${PALETTES[p].slice(0, 4).map(c => `
+                        <div style="width:12px; height:12px; border-radius:50%; background:${c}"></div>
+                      `).join('')}
+                    </div>
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">✍️ Tipografía</label>
+              <select class="form-select" onchange="window.actions.updateQuizMeta('font', this.value)" style="font-family:${state.activeQuiz.font || FONTS[0].value}">
+                ${FONTS.map(f => `
+                  <option value="${f.value}" ${(state.activeQuiz.font || FONTS[0].value) === f.value ? 'selected' : ''} style="font-family:${f.value}">${f.name}</option>
+                `).join('')}
+              </select>
+            </div>
+          ` : ''}
+
           <hr style="border:none; border-top:1px solid var(--border); margin:16px 0">
           <button class="btn btn-secondary" onclick="window.actions.addQuestion()" style="width:100%; justify-content:center">＋ Agregar pregunta</button>
         </div>
@@ -588,7 +634,7 @@ function renderPlay() {
               </div>
 
               ${state.fullscreenCloud ? `
-                <div style="position:fixed; inset:0; z-index:9999; background:#fff; display:flex; flex-direction:column; padding:0;">
+                <div style="position:fixed; inset:0; z-index:9999; background:#fff; display:flex; flex-direction:column; padding:0; overflow:hidden;">
                   <!-- Header with question and close button -->
                   <div style="background:var(--accent1); color:white; padding:20px 28px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0;">
                     <div style="flex:1; min-width:0;">
@@ -904,7 +950,7 @@ window.wordCloudManager = {
     const wObj = {
        text: text,
        count: count,
-       color: window.wordCloudManager.colors[Object.keys(window.wordCloudManager.wordMap).length % window.wordCloudManager.colors.length]
+       color: (PALETTES[state.activeQuiz?.palette] || window.wordCloudManager.colors)[Object.keys(window.wordCloudManager.wordMap).length % (PALETTES[state.activeQuiz?.palette] || window.wordCloudManager.colors).length]
     };
 
     const span = document.createElement('span');
@@ -1120,6 +1166,7 @@ window.actions = {
     if (!state.activeQuiz) return;
     if (field === 'timePerQ') val = parseInt(val) || 0;
     state.activeQuiz[field] = val;
+    render();
   },
 
   newWordCloud: () => {
@@ -1130,7 +1177,9 @@ window.actions = {
       timePerQ: 0, 
       questions: [ { text: '¿Qué palabra describe mejor el tema de hoy?', options: [], correct: [] } ], 
       color: '#0c8599', 
-      bgUrl: '' 
+      bgUrl: '',
+      palette: 'normal',
+      font: "'Plus Jakarta Sans', sans-serif"
     };
     setPage('creator');
   },
@@ -1633,6 +1682,7 @@ window.actions = {
 
   toggleFullscreenCloud: (val) => {
     state.fullscreenCloud = val;
+    document.body.style.overflow = val ? 'hidden' : '';
     render();
   }
 };
