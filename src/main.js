@@ -17,7 +17,7 @@ import {
 } from 'firebase/firestore';
 import { storage, auth, googleProvider } from './firebase.js';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
+import { signInWithPopup, signOut, onAuthStateChanged, signInAnonymously } from 'firebase/auth';
 
 const PALETTES = {
   normal: ['#6c63ff', '#43d9ad', '#ff6b6b', '#f9ca24', '#0c8599', '#e84393', '#00cec9', '#fdcb6e'],
@@ -1425,9 +1425,14 @@ window.actions = {
       return;
     }
 
+    // Sign in anonymously so Firestore rules can identify this student
+    const anonCred = await signInAnonymously(auth);
+    const uid = anonCred.user.uid;
+
     // Register player with unique ID
     const playerRef = await addDoc(collection(db, 'sessions', code, 'players'), {
       name,
+      uid,
       score: 0,
       currentAnswer: [],
       responses: {},
