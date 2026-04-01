@@ -929,8 +929,10 @@ let questionStartTime = 0;  // timestamp when current question was rendered
 
 // ---- NAV ----
 function showPage(id) {
-  // Bug #4 fix: stop timer when leaving play page
-  if (id !== 'play') clearInterval(timerInterval);
+  if (id !== 'play') {
+    clearInterval(timerInterval);
+    clearTimeout(window.autoNextTimeout);
+  }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');
   document.querySelectorAll('.nav-tab').forEach((t,i) => t.classList.remove('active'));
@@ -1290,7 +1292,7 @@ function renderQuestion() {
   const q = activeQuiz.questions[currentQ];
   const total = activeQuiz.questions.length;
   document.getElementById('q-counter').textContent = `Pregunta ${currentQ+1} / ${total}`;
-  document.getElementById('progress-fill').style.width = ((currentQ / total) * 100) + '%';
+  document.getElementById('progress-fill').style.width = (((currentQ + 1) / total) * 100) + '%';
   document.getElementById('q-text').textContent = q.text;
   document.getElementById('next-btn').style.display = 'none';
 
@@ -1447,7 +1449,8 @@ function showResults() {
       p.speedBonus = playerSpeedBonus;
     } else {
       p.score = Math.floor(Math.random() * (total + 1));
-      p.speedBonus = Math.floor(Math.random() * (p.score * 2 + 1));
+      p.speedBonus = Math.floor(Math.random() * (p.score * 3 + 1));
+      p.speedBonus = Math.min(p.speedBonus, p.score * 3);
     }
     p.total = p.score + p.speedBonus;
   });

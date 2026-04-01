@@ -121,6 +121,10 @@ let state = {
   localQIndex: 0, // Individual progress for automatic mode
   timeLeft: 0,
   timerInterval: null,
+  answerSubmitting: false,
+  joiningSession: false,
+  sessionUnsub: null,
+  playersUnsub: null,
   defaultBg: '/bg-default.png',
   user: null,
   showingFeedback: false,
@@ -1391,6 +1395,10 @@ window.actions = {
   },
 
   joinSession: async () => {
+    if (state.joiningSession) return;
+    state.joiningSession = true;
+
+    try {
     const code = document.getElementById('join-code').value.trim().toUpperCase();
     const name = document.getElementById('join-name').value.trim();
     if (!code) { await showAlert('Ingresá el código de la partida.', 'warning'); return; }
@@ -1410,23 +1418,34 @@ window.actions = {
     const qSnap = await getDoc(doc(db, 'quizzes', state.session.quizId));
     state.activeQuiz = qSnap.data();
 
+    // Check player limit before registering
+    const playersSnap = await getDocs(collection(db, 'sessions', code, 'players'));
+    if (playersSnap.size >= 40) {
+      await showAlert('La partida está llena (máximo 40 jugadores).', 'error');
+      return;
+    }
+
     // Register player with unique ID
-    const playerRef = await addDoc(collection(db, 'sessions', code, 'players'), { 
-      name, 
-      score: 0, 
-      currentAnswer: [], 
-      responses: {}, 
-      qProgress: 0, 
-      finished: false 
+    const playerRef = await addDoc(collection(db, 'sessions', code, 'players'), {
+      name,
+      score: 0,
+      currentAnswer: [],
+      responses: {},
+      qProgress: 0,
+      finished: false
     });
     state.playerId = playerRef.id;
 
+    // Clean up any previous listeners before attaching new ones
+    if (state.sessionUnsub) { state.sessionUnsub(); state.sessionUnsub = null; }
+    if (state.playersUnsub) { state.playersUnsub(); state.playersUnsub = null; }
+
     // Listen to session changes
-    onSnapshot(doc(db, 'sessions', code), (sn) => {
+    state.sessionUnsub = onSnapshot(doc(db, 'sessions', code), (sn) => {
       const data = sn.data();
       const prevStatus = state.session?.status;
       state.session = { id: code, ...data };
-      
+
       // Automatic start if session is already playing
       if (data.status === 'playing' && state.currentPage === 'lobby') {
         state.localQIndex = 0;
@@ -1434,12 +1453,12 @@ window.actions = {
         setPage('play');
       }
       // No more data.status === 'finished' listener for students — progress is individual
-      
+
       render();
     });
 
     // Listen to players (for results & cloud)
-    onSnapshot(collection(db, 'sessions', code, 'players'), (snap) => {
+    state.playersUnsub = onSnapshot(collection(db, 'sessions', code, 'players'), (snap) => {
       state.players = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       render();
       // wordcloud redraw is handled automatically by render()
@@ -1453,6 +1472,9 @@ window.actions = {
     } else {
       // Fallback: session is waiting (shouldn't happen with auto-play, but just in case)
       setPage('lobby');
+    }
+    } finally {
+      state.joiningSession = false;
     }
   },
 
@@ -1490,19 +1512,23 @@ window.actions = {
   },
 
   selectStudentAnswer: async (idx) => {
+    if (state.answerSubmitting) return;
+
     let player = state.players.find(p => p.id === state.playerId);
-    if (!player.currentAnswer) player.currentAnswer = [];
-    
-    // If already answered this question, don't allow change
-    if (player.currentAnswer.length > 0) return;
+    const current = player?.currentAnswer ?? [];
+    if (current.length > 0) return;
     if (player.qProgress !== state.localQIndex) return;
 
+    state.answerSubmitting = true;
     player.currentAnswer = [idx];
     render();
 
-    // Sync immediately to Firebase so the choice is locked in the cloud too
-    const playerRef = doc(db, 'sessions', state.session.id, 'players', state.playerId);
-    await updateDoc(playerRef, { currentAnswer: [idx] });
+    try {
+      const playerRef = doc(db, 'sessions', state.session.id, 'players', state.playerId);
+      await updateDoc(playerRef, { currentAnswer: [idx] });
+    } finally {
+      state.answerSubmitting = false;
+    }
   },
 
   submitAnswer: async () => {
@@ -1559,7 +1585,7 @@ window.actions = {
        return;
     }
 
-    const chosen = player?.currentAnswer || [];
+    const chosen = Array.isArray(player?.currentAnswer) ? player.currentAnswer : [];
     
     // Check correctness: grant point if chosen option is among the correct ones
     const correctArr = Array.isArray(q.correct) ? q.correct : [q.correct];
@@ -1622,7 +1648,7 @@ window.actions = {
   nextQuestion: async () => {
     // Reset players currentAnswer for next Q
     const playersSnap = await getDocs(collection(db, 'sessions', state.session.id, 'players'));
-    const batch = playersSnap.docs.map(d => updateDoc(d.ref, { currentAnswer: null }));
+    const batch = playersSnap.docs.map(d => updateDoc(d.ref, { currentAnswer: [] }));
     await Promise.all(batch);
 
     await updateDoc(doc(db, 'sessions', state.session.id), {
